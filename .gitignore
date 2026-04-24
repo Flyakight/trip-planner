@@ -17,3 +17,8 @@ funding-chart-playground.html
 # Reference PDF (client material, keep out of git)
 Kim + Steph*.pdf
 *.pdf
+
+# Local extraction outputs / caches
+trips/drafts/
+__pycache__/
+*.pyc

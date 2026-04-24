@@ -77,6 +77,7 @@ function itinerary() {
     // state
     rawCsv: '',
     rows: [],
+    showEditor: false,
     travelerName: '',
     errors: [],
     showImport: false,
@@ -176,6 +177,116 @@ function itinerary() {
       return (str || '').split('|').map(t => t.trim()).filter(Boolean);
     },
 
+    csvHeaders() {
+      return [...REQUIRED_HEADERS, ...OPTIONAL_HEADERS];
+    },
+
+    newRowId() {
+      return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    },
+
+    normalizeRow(row) {
+      const clean = {};
+      this.csvHeaders().forEach(h => {
+        clean[h] = (row[h] ?? '').toString().trim();
+      });
+
+      const date = clean.Date;
+      const _iso = date && this.isValidDate(date) ? this.toIsoDate(date) : '';
+      return {
+        ...clean,
+        _iso,
+        _minutes: this.timeToMinutes(clean.TimeSlot),
+        _tags: this.parseTags(clean.Tags),
+        _ideaId: slugify((clean.City || '') + '-' + (clean.Title || '')),
+        _rowId: row._rowId || this.newRowId(),
+      };
+    },
+
+    syncRawCsvFromRows({ persist = true } = {}) {
+      const records = this.rows.map(r => {
+        const out = {};
+        this.csvHeaders().forEach(h => { out[h] = r[h] || ''; });
+        return out;
+      });
+      const csv = records.length
+        ? Papa.unparse(records, { columns: this.csvHeaders() })
+        : this.csvHeaders().join(',');
+      this.rawCsv = csv;
+      if (persist && this.isAdmin) {
+        localStorage.setItem(`${this.storagePrefix}:csv`, csv);
+      }
+      return csv;
+    },
+
+    openEditor() {
+      this.showEditor = true;
+    },
+    closeEditor() {
+      this.showEditor = false;
+    },
+    touchRow(idx) {
+      const row = this.rows[idx];
+      if (!row) return;
+      this.rows[idx] = this.normalizeRow(row);
+      this.syncRawCsvFromRows();
+    },
+    addRow(type = 'fixed') {
+      const isBank = type === 'bank';
+      const row = this.normalizeRow({
+        Date: '',
+        WakeUp: '',
+        Sleep: '',
+        Type: isBank ? 'Bank' : 'Fixed',
+        Category: isBank ? 'Activity' : '',
+        TimeSlot: '',
+        Title: '',
+        Location: '',
+        MapLink: '',
+        Details: '',
+        ConfNo: '',
+        Cost: '',
+        TicketLink: '',
+        City: '',
+        Tags: '',
+      });
+      this.rows.push(row);
+      this.syncRawCsvFromRows();
+      this.flash(isBank ? 'Added bank row' : 'Added fixed row');
+    },
+    removeRow(idx) {
+      this.rows.splice(idx, 1);
+      this.syncRawCsvFromRows();
+      this.flash('Row removed');
+    },
+    saveEditedCsv() {
+      this.rows = this.rows.map(r => this.normalizeRow(r));
+      this.syncRawCsvFromRows();
+      this.flash('CSV updated');
+    },
+    downloadEditedCsv() {
+      const csv = this.syncRawCsvFromRows();
+      const tripSlug = this.tripId || 'itinerary';
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = href;
+      a.download = `${tripSlug}-edited.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(href);
+      this.flash('Downloaded edited CSV');
+    },
+    get hotelRowsMissingTimes() {
+      return this.rows.filter(r => {
+        if ((r.Category || '').toLowerCase() !== 'hotel') return false;
+        const title = (r.Title || '').toLowerCase();
+        const isCheckRow = title.includes('check in') || title.includes('check out');
+        return isCheckRow && !r.TimeSlot;
+      }).length;
+    },
+
     /* ---------- CSV handling ---------- */
     parseCsv({ silent = false, persist = true } = {}) {
       this.errors = [];
@@ -194,34 +305,21 @@ function itinerary() {
 
       const cleanRows = [];
       result.data.forEach((row, i) => {
-        const date = (row.Date || '').trim();
-        const type = (row.Type || '').toLowerCase();
-        const _tags = this.parseTags(row.Tags);
-        const _ideaId = slugify((row.City || '') + '-' + (row.Title || ''));
+        const normalized = this.normalizeRow(row);
+        const date = normalized.Date;
+        const type = (normalized.Type || '').toLowerCase();
         if (!date) {
           // Bank rows may have no date — they live in the Ideas pool
           if (type === 'bank') {
-            cleanRows.push({
-              ...row,
-              _iso: '',
-              _minutes: 99999,
-              _tags,
-              _ideaId,
-            });
+            cleanRows.push(normalized);
           }
           return;
         }
         if (!this.isValidDate(date)) {
-          this.errors.push(`Row ${i + 2}: invalid date "${date}" (expected YYYY-MM-DD or MM/DD/YYYY)`);
+          this.errors.push(`Row ${i + 2}: invalid date "${date}" (expected YYYY-MM-DD, MM/DD/YYYY, or MM/DD/YY)`);
           return;
         }
-        cleanRows.push({
-          ...row,
-          _iso: this.toIsoDate(date),
-          _minutes: this.timeToMinutes(row.TimeSlot),
-          _tags,
-          _ideaId,
-        });
+        cleanRows.push(normalized);
       });
 
       if (this.errors.length && missing.length) {
@@ -258,25 +356,32 @@ function itinerary() {
       this.locks = [];
       this.errors = [];
       this.showImport = true;
+      this.showEditor = false;
     },
 
     /* ---------- Date/time helpers ---------- */
     isValidDate(s) {
-      // Accept YYYY-MM-DD or MM/DD/YYYY
+      // Accept YYYY-MM-DD, MM/DD/YYYY, or MM/DD/YY
       const iso = /^(\d{4})-(\d{2})-(\d{2})$/;
-      const us  = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+      const us  = /^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/;
       let m, y, mo, d;
       if ((m = s.match(iso))) { y = +m[1]; mo = +m[2]; d = +m[3]; }
-      else if ((m = s.match(us))) { y = +m[3]; mo = +m[1]; d = +m[2]; }
+      else if ((m = s.match(us))) {
+        y = +m[3];
+        if (y < 100) y += 2000;
+        mo = +m[1];
+        d = +m[2];
+      }
       else return false;
       if (mo < 1 || mo > 12 || d < 1 || d > 31) return false;
       const dt = new Date(y, mo - 1, d);
       return dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d;
     },
     toIsoDate(s) {
-      const us = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      const us = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
       if (us) {
-        const [, mo, d, y] = us;
+        const [, mo, d, yy] = us;
+        const y = String((+yy < 100) ? (+yy + 2000) : +yy);
         return `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
       }
       return s;
@@ -493,6 +598,10 @@ function itinerary() {
     openUrl(url) {
       if (!url) return;
       window.open(url, '_blank', 'noopener');
+    },
+    printToPdf() {
+      alert('For a clean PDF, turn OFF "Headers and footers" in the print dialog before saving.');
+      window.print();
     },
 
     async copyConf(conf, evt) {

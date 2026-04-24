@@ -25,6 +25,36 @@ way in.
 3. Commit + push. Cloudflare Pages auto-deploys.
 4. Send the client: `https://trips.thereandback.club/?id=<trip-slug>-<entropy>`.
 
+## Auto-extract from confirmation docs (drop-folder workflow)
+
+When you have lots of airline/hotel/activity confirmations, you can drop
+them in a folder and generate a draft CSV automatically:
+
+```bash
+python3 scripts/extract_trip_from_docs.py \
+  --input ./confirmations/<client-folder> \
+  --slug <trip-slug>-<entropy> \
+  --year 2026
+```
+
+Supported file types:
+
+```
+.pdf, .eml, .txt, .md, .html
+```
+
+The script writes:
+
+- `trips/drafts/<slug>.csv` — import-ready draft in this app's schema.
+- `trips/drafts/<slug>-review.csv` — confidence + issues per source file.
+
+Recommended flow:
+
+1. Drop all confirmations into one folder.
+2. Run the extraction script.
+3. Open `*-review.csv` and fix low-confidence rows first.
+4. Rename/finalize the draft CSV into `trips/<slug>.csv` when ready.
+
 ## CSV schema
 
 Required columns:

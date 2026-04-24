@@ -1,0 +1,8 @@
+Date,WakeUp,Sleep,Type,Category,TimeSlot,Title,Location,MapLink,Details,ConfNo,Cost,TicketLink,City,Tags
+2026-06-10,Home,Hotel Example City,Fixed,Flight,09:15,"Outbound flight: XX 123","JFK to CDG",https://maps.google.com/?q=JFK+Airport,"Arrive 2 hours early for international check-in.",XX123-ABC1,,https://example.com/flight,Paris,flight|international
+2026-06-10,Home,Hotel Example City,Fixed,Hotel,15:00,"Check in: Hotel Example City","123 Example St, Paris",https://maps.google.com/?q=123+Example+St+Paris,"Early check-in requested.",HOTEL-456,"$1200 (3 nights)",,Paris,hotel|check-in
+2026-06-11,Hotel Example City,Hotel Example City,Fixed,Activity,10:00,"Timed entry: Main Museum","Museum Address, Paris",https://maps.google.com/?q=Main+Museum+Paris,"Bring passport and confirmation email.",MUSEUM-789,$45,https://example.com/tickets,Paris,activity|booked
+2026-06-12,Hotel Example City,Hotel Next City,Fixed,Transit,12:20,"High-speed train to next city","Paris Gare de Lyon",https://maps.google.com/?q=Paris+Gare+de+Lyon,"Car 5, seats 12A and 12B.",TRAIN-101,"$85 each",https://example.com/train,Paris,train|transfer
+2026-06-12,Hotel Example City,Hotel Next City,Fixed,Hotel,16:00,"Check in: Hotel Next City","456 Next Ave, Lyon",https://maps.google.com/?q=456+Next+Ave+Lyon,"Front desk open 24/7.",HOTEL-202,"$640 (2 nights)",,Lyon,hotel|check-in
+,,,Bank,Food,,"Client favorite bistro","Old Town, Lyon",https://maps.google.com/?q=Old+Town+Lyon,"Good for first dinner if energy allows.",,,,Lyon,food|casual|reservation
+,,,Bank,Activity,,"River walk and old quarter","Old Town, Lyon",https://maps.google.com/?q=Old+Town+Lyon,"Flexible option for free afternoon.",,,,Lyon,walk|free|outdoors
