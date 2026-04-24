@@ -1,0 +1,19 @@
+# Claude / local tooling
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Local playgrounds (unrelated sandboxes)
+financial-slide-playground.html
+funding-chart-playground.html
+
+# Reference PDF (client material, keep out of git)
+Kim + Steph*.pdf
+*.pdf

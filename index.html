@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#FAF7F2" />
+  <title>Italy 2026 — Itinerary</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caprasimo&family=EB+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css?v=11">
+
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="app.js?v=11"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body x-data="itinerary()" x-cloak :class="{'ideas-mode': showIdeas}">
+
+  <!-- Branded landing (no trip id, not admin) -->
+  <section class="landing no-print" x-show="landing" x-transition>
+    <div class="landing-inner">
+      <div class="landing-mark">ThereandBack.Club</div>
+      <h1 class="landing-title">Your itinerary, <em>there &amp; back.</em></h1>
+      <p class="landing-sub">This page expects a personal link from your trip designer.<br>If you have one, it looks like <code>trips.thereandback.club/?id=your-trip</code>.</p>
+      <div class="landing-cta-row">
+        <a class="btn" href="https://thereandback.club">Visit thereandback.club</a>
+      </div>
+      <p class="landing-foot">Lost your link? <a href="mailto:kate@thereandback.club">Email Kate</a>.</p>
+    </div>
+  </section>
+
+  <!-- Loading / missing -->
+  <section class="landing no-print" x-show="loading">
+    <div class="landing-inner">
+      <div class="landing-mark">ThereandBack.Club</div>
+      <p class="landing-sub">Loading your itinerary…</p>
+    </div>
+  </section>
+  <section class="landing no-print" x-show="tripMissing && !loading">
+    <div class="landing-inner">
+      <div class="landing-mark">ThereandBack.Club</div>
+      <h1 class="landing-title">We couldn't find that trip.</h1>
+      <p class="landing-sub">The link may be expired or mistyped. Double-check the URL with your trip designer.</p>
+      <p class="landing-foot"><a href="mailto:kate@thereandback.club">Email Kate</a> if you need help.</p>
+    </div>
+  </section>
+
+  <!-- Sticky header + day nav chips -->
+  <div class="sticky-wrap no-print" x-show="rows.length" x-transition>
+    <div class="sticky-header">
+      <span class="sh-current">
+        <svg class="sh-cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3.5" y="5" width="17" height="15" rx="2"/>
+          <path d="M3.5 10h17"/>
+          <path d="M8 3v4"/>
+          <path d="M16 3v4"/>
+        </svg>
+        <span class="sh-label">Day <strong x-text="currentDay ? (currentDay.idx + 1) : ''"></strong></span>
+        <span class="sh-date" x-text="currentDay ? currentDay.dateLabel : ''"></span>
+      </span>
+      <div class="day-ideas-tabs" role="tablist" aria-label="Days or Ideas">
+        <button class="dit-btn" :class="{active: !showIdeas}" @click="showIdeas = false" role="tab" :aria-selected="!showIdeas">Days</button>
+        <button class="dit-btn" :class="{active: showIdeas}" @click="showIdeas = true" role="tab" :aria-selected="showIdeas">
+          Ideas <span class="dit-count" x-show="ideas.length" x-text="ideas.length"></span>
+        </button>
+      </div>
+      <button class="btn link jump-top" @click="window.scrollTo({top:0,behavior:'smooth'})" title="Back to cover">Cover ↑</button>
+    </div>
+    <nav class="day-nav" aria-label="Jump to day" x-show="!showIdeas">
+      <template x-for="d in days" :key="'chip-'+d.iso">
+        <button class="day-chip"
+                :class="{active: currentDayIdx === d.idx}"
+                @click="scrollToDay(d.idx)"
+                :title="'Jump to Day ' + (d.idx + 1) + ' — ' + d.dateLabel">
+          <span class="dc-label">Day <span x-text="d.idx + 1"></span></span>
+          <span class="dc-date" x-text="d.dateLabel.replace(/\/\d{4}$/, '')"></span>
+        </button>
+      </template>
+    </nav>
+  </div>
+
+  <div class="app-layout" x-show="!landing && !loading && !tripMissing">
+  <main class="main-column">
+  <!-- Cover / Trip overview -->
+  <section class="page cover-page">
+    <div class="cover-compass" aria-hidden="true">
+      <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="32" cy="32" r="27"/>
+        <circle cx="32" cy="32" r="22" stroke-dasharray="1 3"/>
+        <path d="M32 9 L35 32 L32 30 L29 32 Z" fill="currentColor" stroke="none"/>
+        <path d="M32 55 L29 32 L32 34 L35 32 Z" fill="currentColor" opacity="0.35" stroke="none"/>
+        <circle cx="32" cy="32" r="1.6" fill="currentColor" stroke="none"/>
+        <text x="32" y="7.5" text-anchor="middle" font-family="Playfair Display, serif" font-size="5" fill="currentColor" stroke="none">N</text>
+      </svg>
+    </div>
+
+    <!-- Import panel (admin only) -->
+    <div class="import-panel no-print" x-show="isAdmin && showImport" x-transition>
+      <h2>Import itinerary</h2>
+      <p class="hint">
+        Paste CSV with these columns (order flexible):
+        <em>Date, WakeUp, Sleep, Type (Fixed/Bank), Category, TimeSlot, Title, Location, MapLink, Details, ConfNo, Cost, TicketLink</em>
+      </p>
+      <textarea x-model="rawCsv" placeholder="Date,WakeUp,Sleep,Type,Category,TimeSlot,Title,Location,MapLink,Details,ConfNo,Cost,TicketLink&#10;2026-05-01,..."></textarea>
+      <div class="btn-row">
+        <button class="btn" @click="parseCsv()">Parse CSV</button>
+        <button class="btn secondary" @click="loadDemo()">Load demo</button>
+        <button class="btn link" @click="showImport = false" x-show="rows.length">Hide</button>
+      </div>
+    </div>
+
+    <div class="no-print" x-show="isAdmin && !showImport && rows.length" style="margin-bottom:1.25rem;">
+      <button class="btn link" @click="showImport = true">✎ Edit CSV</button>
+      <button class="btn link" @click="clearAll()">Clear all</button>
+    </div>
+
+    <!-- Validation -->
+    <div class="errors no-print" x-show="errors.length">
+      <strong>Can't build itinerary:</strong>
+      <ul>
+        <template x-for="err in errors" :key="err"><li x-text="err"></li></template>
+      </ul>
+    </div>
+
+    <template x-if="rows.length">
+      <div>
+        <h1 class="cover-title">Itinerary for</h1>
+        <div class="cover-name-row">
+          <input type="text" x-model="travelerName" placeholder="Your name(s)" aria-label="Traveler name">
+        </div>
+
+        <div class="cover-dates">
+          <span class="label">Dates</span>
+          <span x-text="dateRange"></span>
+        </div>
+
+        <div class="cover-section-title">Trip Overview &amp; Reservation Nos.</div>
+
+        <div class="reservation-grid">
+          <template x-for="r in reservations" :key="r._iso + r.Title + r.ConfNo">
+            <div class="res-card">
+              <div class="res-title" x-text="r.Title"></div>
+              <div class="res-meta">
+                <span x-text="r.dateLabel || formatDate(r._iso)"></span>
+                <span x-show="r.Location"> · </span>
+                <span x-text="r.Location"></span>
+              </div>
+              <div class="event-actions" style="margin-top:0.45rem;">
+                <button class="chip chip-mono"
+                        :data-orig="r.ConfNo"
+                        @click="copyConf(r.ConfNo, $event)"
+                        x-text="r.ConfNo"
+                        :title="'Copy ' + r.ConfNo"></button>
+                <span class="chip chip-cost" x-show="r.Cost" x-text="r.Cost"></span>
+                <a class="chip" x-show="r.TicketLink" :href="r.TicketLink" target="_blank" rel="noopener">View booking</a>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <div class="resources">
+          <div>
+            <h3>Resources</h3>
+            <div style="font-size:0.95rem;">
+              <div><strong>Italy emergency:</strong> 112</div>
+              <div><strong>US Embassy Rome:</strong> +39 06 46741</div>
+              <div><strong>US Consulate Florence:</strong> +39 055 266 951</div>
+            </div>
+          </div>
+          <div class="qr-wrap">
+            <span class="qr-label">Live version</span>
+            <div id="qr-canvas"></div>
+            <div style="margin-top:0.25rem; max-width:108px;">Scan to open the live itinerary — all links stay current.</div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <template x-if="isAdmin && !rows.length && !errors.length && !loading">
+      <p class="hint" style="color:var(--muted); margin-top:2rem;">
+        Paste a CSV above — or click <strong>Load demo</strong> to see the Italy 2026 sample.
+      </p>
+    </template>
+
+  </section>
+
+  <!-- Day pages -->
+  <template x-for="day in days" :key="day.iso">
+    <section class="page day-page" :data-day-idx="day.idx">
+      <header class="day-header">
+        <div class="day-eyebrow">
+          <span class="day-eyebrow-word">DAY</span>
+          <span class="day-eyebrow-num" x-text="day.ordinalLabel.toUpperCase()"></span>
+        </div>
+        <h2 class="day-title" x-text="day.dateLabel"></h2>
+        <svg class="day-flourish" viewBox="0 0 220 26" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M2 20 C 45 4, 95 4, 150 14" stroke-dasharray="2 3"/>
+          <path d="M150 14 l10 -4 l-3 5 l6 2 l-9 3 z" fill="currentColor" stroke="none"/>
+          <circle cx="2" cy="20" r="1.6" fill="currentColor" stroke="none"/>
+        </svg>
+      </header>
+
+      <!-- Venice alert -->
+      <div class="alert alert-venice" x-show="day.needsVeniceAlert">
+        <div class="alert-eyebrow">Heads up · Venice</div>
+        <div class="alert-title">Vaporetto reminders</div>
+        <p>Validate every ticket at the yellow machine <strong>before</strong> boarding — even single rides (the fine is ~€60).</p>
+        <p>Google Maps routes by street; use the <strong>AVM Venezia</strong> app for water-bus routing.</p>
+        <p>Buy a multi-day pass if you'll take more than 3 rides. No big rolling luggage on vaporetti during rush hour.</p>
+      </div>
+
+      <!-- ZTL alert -->
+      <div class="alert alert-ztl" x-show="day.needsZtlAlert">
+        <div class="alert-eyebrow">Heads up · Driving in Italy</div>
+        <div class="alert-title">ZTL — Limited Traffic Zone</div>
+        <p>Historic city centers (Florence, Rome, Siena, Bologna) block non-resident cars. Cameras issue automatic fines weeks later.</p>
+        <p>Park at your hotel's designated lot outside the ZTL and walk. Do <strong>not</strong> drive to map pins inside the centro storico.</p>
+      </div>
+
+      <!-- Timeline: Fixed + timed locked-in ideas -->
+      <template x-if="day.timeline.length">
+        <div>
+          <template x-for="(e, i) in day.timeline" :key="day.iso + '-t-' + (e._lockId || i)">
+            <div class="event-card" :class="['cat-' + catKey(e.Category), { 'event-locked': e._isLock }]">
+              <div class="event-time-col">
+                <span class="event-time" x-show="e.TimeSlot" x-text="formatTime(e.TimeSlot)"></span>
+                <span class="event-time event-time-empty" x-show="!e.TimeSlot">·</span>
+              </div>
+              <div class="event-card-body">
+                <span class="cat-pill">
+                  <span class="cat-pill-ico" x-html="iconFor(e.Category)" aria-hidden="true"></span>
+                  <span class="cat-pill-label" x-text="catKey(e.Category)"></span>
+                </span>
+                <span class="locked-mark" x-show="e._isLock" title="Added from Ideas">From Ideas</span>
+                <div class="event-body">
+                  <span class="event-title" x-text="e.Title"></span>
+                </div>
+                <div class="event-loc" x-show="e.Location" x-text="e.Location"></div>
+                <div class="event-details italic" x-show="e.Details" x-text="e.Details"></div>
+                <div class="event-actions">
+                  <a class="chip" x-show="e.MapLink" :href="e.MapLink" target="_blank" rel="noopener">Open in Maps</a>
+                  <a class="chip" x-show="e.TicketLink" :href="e.TicketLink" target="_blank" rel="noopener" x-text="e._isLock ? 'Book / Info' : 'View Ticket'"></a>
+                  <button class="chip chip-mono"
+                          x-show="e.ConfNo"
+                          :data-orig="e.ConfNo"
+                          @click="copyConf(e.ConfNo, $event)"
+                          x-text="e.ConfNo"
+                          :title="'Copy ' + e.ConfNo"></button>
+                  <span class="chip chip-cost" x-show="e.Cost" x-text="e.Cost"></span>
+                  <button class="chip chip-remove no-print" x-show="e._isLock" @click="removeLock(e._lockId)" title="Remove from this day">Remove</button>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </template>
+
+      <!-- Flexible picks — untimed locked ideas -->
+      <template x-if="day.flexible.length">
+        <section class="flex-section">
+          <h3 class="section-label">Flexible picks</h3>
+          <ul class="flex-list">
+            <template x-for="(e, i) in day.flexible" :key="day.iso + '-fl-' + (e._lockId || i)">
+              <li class="flex-item" :class="'cat-' + catKey(e.Category)">
+                <div class="flex-body">
+                  <span class="cat-pill cat-pill-sm">
+                    <span class="cat-pill-ico" x-html="iconFor(e.Category)" aria-hidden="true"></span>
+                    <span class="cat-pill-label" x-text="catKey(e.Category)"></span>
+                  </span>
+                  <div class="flex-title" x-text="e.Title"></div>
+                  <div class="flex-meta" x-show="e.Location" x-text="e.Location"></div>
+                  <div class="flex-details" x-show="e.Details" x-text="e.Details"></div>
+                  <div class="event-actions">
+                    <a class="chip" x-show="e.MapLink" :href="e.MapLink" target="_blank" rel="noopener">Open in Maps</a>
+                    <a class="chip" x-show="e.TicketLink" :href="e.TicketLink" target="_blank" rel="noopener">Book / Info</a>
+                    <button class="chip chip-remove no-print" @click="removeLock(e._lockId)">Remove</button>
+                  </div>
+                </div>
+              </li>
+            </template>
+          </ul>
+        </section>
+      </template>
+
+      <!-- Stay footer (print only — on screen we use the peek bar) -->
+      <footer class="stay-footer print-only">
+        <div class="cell">
+          <span class="cap">Where you'll wake up</span>
+          <span class="val" x-text="day.wakeUp || '—'"></span>
+        </div>
+        <div class="cell">
+          <span class="cap">Are You Checking Out or Traveling Today?</span>
+          <span class="val" x-text="day.transitLabel"></span>
+        </div>
+        <div class="cell">
+          <span class="cap">Where You'll Sleep</span>
+          <span class="val" x-text="day.sleep || '—'"></span>
+        </div>
+      </footer>
+    </section>
+  </template>
+  </main>
+
+  <!-- Ideas rail -->
+  <aside class="ideas-rail no-print" x-show="rows.length" aria-label="Recommended activities">
+    <div class="rail-header">
+      <div class="rail-eyebrow">Not locked in · Tap to add</div>
+      <h2 class="rail-title">Recommended Activities</h2>
+    </div>
+
+    <div class="sort-row" role="tablist" aria-label="Sort">
+      <span class="sort-lbl">Sort by</span>
+      <div class="sort-seg">
+        <button class="sort-btn" :class="{active: ideasSort === 'city'}" @click="ideasSort = 'city'" role="tab" :aria-selected="ideasSort === 'city'">City</button>
+        <button class="sort-btn" :class="{active: ideasSort === 'type'}" @click="ideasSort = 'type'" role="tab" :aria-selected="ideasSort === 'type'">Activity type</button>
+      </div>
+    </div>
+
+    <div class="filter-chips" aria-label="Filter by city" x-show="ideasSort === 'city' || ideasCityFilter !== 'all'">
+      <button class="fchip" :class="{active: ideasCityFilter === 'all'}" @click="ideasCityFilter = 'all'">All cities</button>
+      <template x-for="c in ideaCities" :key="'cf-'+c">
+        <button class="fchip" :class="{active: ideasCityFilter === c}" @click="ideasCityFilter = c" x-text="c"></button>
+      </template>
+    </div>
+
+    <div class="filter-chips filter-chips-tags" aria-label="Filter by type" x-show="ideasSort === 'type' || ideasTypeFilter !== 'all'">
+      <button class="fchip fchip-sm" :class="{active: ideasTypeFilter === 'all'}" @click="ideasTypeFilter = 'all'">All types</button>
+      <template x-for="t in ideaTypes" :key="'tf-'+t">
+        <button class="fchip fchip-sm" :class="{active: ideasTypeFilter === t}" @click="ideasTypeFilter = t" x-text="t"></button>
+      </template>
+    </div>
+
+    <div class="idea-list">
+      <template x-for="grp in groupedIdeas" :key="'g-'+grp.key">
+        <div class="idea-group">
+          <h3 class="idea-group-label" x-text="grp.label"></h3>
+          <template x-for="idea in grp.items" :key="idea._ideaId">
+            <article class="idea-card" :class="'cat-' + catKey(idea.Category)">
+              <div class="idea-top">
+                <span class="cat-pill cat-pill-sm">
+                  <span class="cat-pill-ico" x-html="iconFor(idea.Category)" aria-hidden="true"></span>
+                  <span class="cat-pill-label" x-text="catKey(idea.Category)"></span>
+                </span>
+                <span class="idea-city" x-text="idea.City"></span>
+              </div>
+              <div class="idea-title" x-text="idea.Title"></div>
+              <div class="idea-loc" x-show="idea.Location" x-text="idea.Location"></div>
+              <div class="idea-details" x-show="idea.Details" x-text="idea.Details"></div>
+              <div class="idea-tags" x-show="(idea._tags || []).length">
+                <template x-for="t in idea._tags" :key="idea._ideaId + '-' + t">
+                  <span class="tag-chip" x-text="t"></span>
+                </template>
+              </div>
+              <div class="idea-actions">
+                <a class="chip" x-show="idea.MapLink" :href="idea.MapLink" target="_blank" rel="noopener">Map</a>
+                <button class="chip chip-add" @click="openAssign(idea._ideaId)">+ Add to day</button>
+              </div>
+              <div class="idea-locked" x-show="lockCountFor(idea._ideaId)">
+                <span class="il-label">On</span>
+                <template x-for="l in locksForIdea(idea._ideaId)" :key="l.lockId">
+                  <span class="il-day" x-text="l.dayLabel"></span>
+                </template>
+              </div>
+            </article>
+          </template>
+        </div>
+      </template>
+      <div class="idea-empty" x-show="!filteredIdeas.length">No activities match these filters.</div>
+    </div>
+  </aside>
+  </div>
+
+  <!-- Assign-to-day sheet -->
+  <div class="assign-sheet-overlay no-print" x-show="assignSheet" @click.self="closeAssign()" x-transition.opacity>
+    <div class="assign-sheet" x-show="assignSheet" x-transition>
+      <template x-if="assignSheet">
+        <div>
+          <div class="as-eyebrow">Add to day</div>
+          <div class="as-title" x-text="(getIdea(assignSheet) || {}).Title || ''"></div>
+          <div class="as-city" x-text="(getIdea(assignSheet) || {}).City || ''"></div>
+          <label class="as-time-label">
+            <span>Time <em>(optional)</em></span>
+            <input type="time" x-model="assignSheetTime" />
+          </label>
+          <div class="as-days">
+            <template x-for="d in days" :key="'as-'+d.iso">
+              <button class="as-day"
+                      :class="{'as-day-match': dayMatchesCity(d, (getIdea(assignSheet) || {}).City)}"
+                      @click="addLock(assignSheet, d.iso, assignSheetTime)">
+                <span class="as-day-num" x-text="'Day ' + (d.idx + 1)"></span>
+                <span class="as-day-date" x-text="d.dateLabel"></span>
+                <span class="as-day-stay" x-text="d.sleep || d.wakeUp || ''"></span>
+              </button>
+            </template>
+          </div>
+          <div class="as-cancel-row">
+            <button class="btn link" @click="closeAssign()">Cancel</button>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <div class="brand-mark no-print">ThereandBack.Club</div>
+
+  <!-- Peek bar: always-visible wake-up / transit / sleep for the current day -->
+  <aside class="peek-bar no-print" x-show="rows.length && currentDay" :class="{open: peekOpen}">
+    <button class="peek-compact" @click="togglePeek()" :aria-expanded="peekOpen">
+      <svg class="peek-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      <span class="peek-lbl">Tonight</span>
+      <strong class="peek-val" x-text="currentDay?.sleep || '—'"></strong>
+      <span class="peek-more">
+        <span class="peek-more-lbl" x-text="peekOpen ? 'Hide' : 'Details'"></span>
+        <span class="peek-caret" :class="{flipped: peekOpen}" aria-hidden="true">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 10 8 6 12 10"/></svg>
+        </span>
+      </span>
+    </button>
+    <div class="peek-expanded" x-show="peekOpen" x-transition.opacity>
+      <div class="peek-row">
+        <span class="peek-cap">Where you'll wake up</span>
+        <strong x-text="currentDay?.wakeUp || '—'"></strong>
+      </div>
+      <div class="peek-row">
+        <span class="peek-cap">Today</span>
+        <strong x-text="currentDay?.transitLabel"></strong>
+      </div>
+      <div class="peek-row">
+        <span class="peek-cap">Where you'll sleep</span>
+        <strong x-text="currentDay?.sleep || '—'"></strong>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Toast -->
+  <div class="toast no-print" x-show="toast" x-text="toast" x-transition></div>
+
+  <style>[x-cloak] { display: none !important; }</style>
+</body>
+</html>

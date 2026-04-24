@@ -1,0 +1,564 @@
+/* Italy 2026 Itinerary — Alpine component */
+
+const REQUIRED_HEADERS = [
+  'Date','WakeUp','Sleep','Type','Category','TimeSlot',
+  'Title','Location','MapLink','Details','ConfNo','Cost','TicketLink'
+];
+const OPTIONAL_HEADERS = ['City','Tags'];
+
+function slugify(s) {
+  return (s || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+
+const CATEGORY_ICONS = {
+  hotel:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 17v-3a3 3 0 0 1 3-3h14a3 3 0 0 1 3 3v3"/><path d="M2 20v-3"/><path d="M22 20v-3"/><path d="M6 11V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4"/></svg>',
+  flight:   '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>',
+  train:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="14" rx="2"/><path d="M4 11h16"/><path d="M8 17l-2 4"/><path d="M16 17l2 4"/><circle cx="9" cy="14" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="14" r="1" fill="currentColor" stroke="none"/></svg>',
+  transit:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20c1.5-1 3-1 4.5 0s3 1 4.5 0 3-1 4.5 0 3 1 4.5 0"/><path d="M4 16l2-6 6-2 6 2 2 6"/><path d="M12 4v6"/></svg>',
+  driving:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14l-1.5-6.5a2 2 0 0 0-2-1.5h-7a2 2 0 0 0-2 1.5L5 17z"/><path d="M5 17v2a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-2"/><path d="M16 17v2a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-2"/><circle cx="7.5" cy="17" r="1" fill="currentColor" stroke="none"/><circle cx="16.5" cy="17" r="1" fill="currentColor" stroke="none"/></svg>',
+  food:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v8a2 2 0 0 1-2 2v8"/><path d="M10 3v6"/><path d="M6 3v6"/><path d="M18 3c-1.8 0-3 2-3 5s1.2 5 3 5v8"/></svg>',
+  activity: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 14.8 9 22 9.5 16.5 14.2 18.2 21.5 12 17.8 5.8 21.5 7.5 14.2 2 9.5 9.2 9"/></svg>',
+};
+const CATEGORY_ALIASES = {
+  plane: 'flight', airport: 'flight',
+  rail: 'train',
+  boat: 'transit', ferry: 'transit', watertaxi: 'transit', vaporetto: 'transit',
+  car: 'driving', drive: 'driving',
+  lodging: 'hotel', accommodation: 'hotel',
+  dining: 'food', restaurant: 'food', meal: 'food', breakfast: 'food', lunch: 'food', dinner: 'food',
+  museum: 'activity', tour: 'activity', sightseeing: 'activity',
+};
+
+const ORDINALS = [
+  '', 'One','Two','Three','Four','Five','Six','Seven','Eight','Nine',
+  'Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen',
+  'Seventeen','Eighteen','Nineteen','Twenty'
+];
+
+const DEMO_CSV = `Date,WakeUp,Sleep,Type,Category,TimeSlot,Title,Location,MapLink,Details,ConfNo,Cost,TicketLink,City,Tags
+2026-05-01,In flight,Hotel Artemide Rome,Fixed,Flight,08:25,"Arrival flight: UA 190","Rome Fiumicino (FCO)",https://maps.google.com/?q=Rome+Fiumicino+Airport,"Land 8:25 AM local. Clear customs and head to Leonardo Express train to Termini.",UA-190-7X4K2,,https://united.com,,
+2026-05-01,In flight,Hotel Artemide Rome,Fixed,Hotel,14:30,"Check in: Hotel Artemide","Via Nazionale 22, Rome",https://maps.google.com/?q=Hotel+Artemide+Rome,"Early check-in from 2:30 PM. Rooftop bar opens at 5 PM — good for jetlag recovery.",ARTMD-881203,"€1,240 (3 nts)",,,
+2026-05-02,Hotel Artemide Rome,Hotel Artemide Rome,Fixed,Activity,09:00,"Vatican City & St. Peter's Basilica","Vatican City",https://maps.google.com/?q=Vatican+City,"Timed entry — arrive 30 min early. Shoulders covered for both of you.",VTK-20260502-0900,€32,https://tickets.museivaticani.va,,
+2026-05-03,Hotel Artemide Rome,Hotel Artemide Rome,Fixed,Activity,08:30,"Colosseum, Forum, Palatine Hill","Piazza del Colosseo",https://maps.google.com/?q=Colosseum+Rome,"Combined ticket. Enter via the Forum side — shorter line.",COLM-20260503-0830,€24,https://www.coopculture.it,,
+2026-05-05,Hotel Artemide Rome,Hotel Loggiato dei Serviti Florence,Fixed,Hotel,11:00,"Check out of Hotel Artemide","Via Nazionale 22, Rome",,"Late checkout until noon already arranged.",,,,,
+2026-05-05,Hotel Artemide Rome,Hotel Loggiato dei Serviti Florence,Fixed,Driving,12:30,"SIXT rental car pickup","Roma Termini SIXT counter",https://maps.google.com/?q=SIXT+Roma+Termini,"ZTL test day. Driver: Kim. Navigate around historic center ZTL cameras — use autostrada A1 north.",SIXT-99720-RM,€412 (5 days),,,
+2026-05-05,Hotel Artemide Rome,Hotel Loggiato dei Serviti Florence,Fixed,Hotel,17:30,"Check in: Loggiato dei Serviti","Piazza della SS. Annunziata 3, Florence",https://maps.google.com/?q=Loggiato+dei+Serviti+Florence,"Park at Garage La Stazione (outside ZTL). Walk 8 min with luggage.",LOGG-FI-554018,€980 (4 nts),,,
+2026-05-06,Hotel Loggiato dei Serviti Florence,Hotel Loggiato dei Serviti Florence,Fixed,Activity,09:15,"Uffizi Gallery — timed entry","Piazzale degli Uffizi",https://maps.google.com/?q=Uffizi+Gallery,"Renaissance marathon. Save 2 hours. Botticelli room midway.",UFF-20260506-0915,€28,https://www.uffizi.it,,
+2026-05-06,Hotel Loggiato dei Serviti Florence,Hotel Loggiato dei Serviti Florence,Fixed,Activity,14:00,"Galleria dell'Accademia (The David)","Via Ricasoli 58-60",https://maps.google.com/?q=Galleria+dell+Accademia+Florence,"Afternoon slot — far less crowded than morning.",ACC-20260506-1400,€16,https://www.galleriaaccademiafirenze.it,,
+2026-05-09,Hotel Loggiato dei Serviti Florence,Hotel Palazzo Stern Venice,Fixed,Driving,09:00,"SIXT car return — Florence","Florence SMN SIXT counter",https://maps.google.com/?q=SIXT+Florence+SMN,"Return with full tank. Then walk to train platform.",SIXT-99720-RM,,,,
+2026-05-09,Hotel Loggiato dei Serviti Florence,Hotel Palazzo Stern Venice,Fixed,Transit,10:45,"Frecciarossa to Venezia S. Lucia","Firenze SMN → Venezia Santa Lucia",https://maps.google.com/?q=Venezia+Santa+Lucia,"Carriage 4, seats 22A/22B. 2h 5min. Validate ticket if printed.",TREN-IT-FRV-0455,€89 each,https://www.trenitalia.com,,
+2026-05-09,Hotel Loggiato dei Serviti Florence,Hotel Palazzo Stern Venice,Fixed,Hotel,14:30,"Water taxi + check in: Palazzo Stern","Dorsoduro 2792, Venice",https://maps.google.com/?q=Palazzo+Stern+Venice,"Take Vaporetto Line 1 from Ferrovia to Ca' Rezzonico. Palazzo is 2-min walk.",STERN-VE-77621,"€1,650 (3 nts)",,,
+2026-05-10,Hotel Palazzo Stern Venice,Hotel Palazzo Stern Venice,Fixed,Activity,10:00,"Doge's Palace / Palazzo Ducale","Piazza San Marco 1",https://maps.google.com/?q=Doge's+Palace+Venice,"Advance purchase €25 (booked >30 days ahead). Secret Itineraries tour highly recommended.",DOG-20260510-1000,€25,https://palazzoducale.visitmuve.it,,
+2026-05-12,Hotel Palazzo Stern Venice,Home,Fixed,Hotel,10:00,"Check out: Palazzo Stern","Dorsoduro 2792, Venice",,"Leave bags at reception if needed.",,,,,
+2026-05-12,Hotel Palazzo Stern Venice,Home,Fixed,Transit,12:30,"Water taxi to Venice Marco Polo (VCE)","Alilaguna Blue Line",https://maps.google.com/?q=Venice+Marco+Polo+Airport,"Alilaguna from San Marco — Blue Line goes to VCE. ~1h 15min. Arrive airport 2h before flight.",ALG-BL-20260512,€15 each,https://www.alilaguna.it,,
+2026-05-12,Hotel Palazzo Stern Venice,Home,Fixed,Flight,16:55,"Return flight: UA 191","Venice (VCE) → Newark (EWR)",https://maps.google.com/?q=Venice+Marco+Polo+Airport,"Departure 4:55 PM local. Arrive EWR 9:45 PM EDT.",UA-191-3M8N1,,https://united.com,,
+,,,Bank,Food,,"Armando al Pantheon","Salita de' Crescenzi 31",https://maps.google.com/?q=Armando+al+Pantheon+Rome,"Stanley Tucci came here for pasta. Tiny and famous — book ahead.",,,,Rome,food|reservation|splurge
+,,,Bank,Activity,,"Piazza Navona + Four Rivers Fountain","Piazza Navona",https://maps.google.com/?q=Piazza+Navona,"Best at night — the fountain is illuminated.",,,,Rome,walk|evening|view|free
+,,,Bank,Food,,"Ristoro degli Angeli","Via L. Capucci 28",https://maps.google.com/?q=Ristoro+degli+Angeli,"GF tiramisu. Fried zucchini blossoms stuffed with mozzarella and anchovies.",,,,Rome,food|gluten-free
+,,,Bank,Activity,,"Domus Aurea","Viale della Domus Aurea",https://maps.google.com/?q=Domus+Aurea,"Nero's palace — VR-guided tour. Also a cat sanctuary. Book in advance.",,,,Rome,museum|book-ahead
+,,,Bank,Food,,"Cimarra 4 Pizzeria & Cocktail Bar","Via Cimarra 4",https://maps.google.com/?q=Cimarra+4+Rome,"GF-friendly Roman pizza. Casual.",,,,Rome,food|casual|gluten-free
+,,,Bank,Activity,,"Centro Storico + Pantheon + Trevi Fountain","Pantheon, Rome",https://maps.google.com/?q=Pantheon+Rome,"Go early morning (before 8) — empty and magical.",,,,Rome,walk|morning|free
+,,,Bank,Activity,,"Janiculum Hill panorama","Gianicolo, Rome",https://maps.google.com/?q=Janiculum+Hill,"Time it for the noon cannon shot. Golden hour: Giardini degli Aranci on Aventine.",,,,Rome,view|free|walk
+,,,Bank,Food,,"Glass Hostaria","Vicolo del Cinque 58",https://maps.google.com/?q=Glass+Hostaria+Rome,"Michelin-starred tasting menu in Trastevere.",,,,Rome,food|splurge|reservation
+,,,Bank,Food,,"Osteria dello Sgrano","Via Pietrapiana 25",https://maps.google.com/?q=Osteria+dello+Sgrano+Florence,"GF pasta — the reason to come. Book for 8 PM.",,,,Florence,food|reservation|gluten-free
+,,,Bank,Food,,"Antica Gelateria Fiorentina","Via Faenza 2A",https://maps.google.com/?q=Antica+Gelateria+Fiorentina,"GF cones!",,,,Florence,food|casual|gluten-free
+,,,Bank,Activity,,"Duomo di Firenze — climb the dome","Piazza del Duomo",https://maps.google.com/?q=Duomo+di+Firenze,"463 steps. Not for the claustrophobic. Book early morning slot.",,,,Florence,view|book-ahead|steep
+,,,Bank,Food,,"Le Volpi e l'Uva","Piazza dei Rossi 1",https://maps.google.com/?q=Le+Volpi+e+l+Uva,"Wine from all over Italy plus local varietals. Cheese plates.",,,,Florence,food|wine|casual
+,,,Bank,Food,,"Risotteria Melotti Firenze","Via dei Macci 79",https://maps.google.com/?q=Risotteria+Melotti+Firenze,"Risotto-only spot. Reservations essential.",,,,Florence,food|reservation
+,,,Bank,Activity,,"Day trip: Siena or San Gimignano","Tuscany",https://maps.google.com/?q=Siena+Italy,"1hr drive each way. ZTL in Siena — park outside walls at Parcheggio Il Campo.",,,,Florence,day-trip|walk
+,,,Bank,Food,,"5ecinque — Natural Vegetarian","Piazza della Passera 1",https://maps.google.com/?q=5ecinque+Florence,"Seasonal, organic, everything house-made.",,,,Florence,food|vegetarian
+,,,Bank,Activity,,"Piazza San Marco + St. Mark's Basilica","Piazza San Marco",https://maps.google.com/?q=Piazza+San+Marco,"Free entry to basilica but queues are brutal. Skip-the-line ticket worth it.",,,,Venice,landmark|walk|free
+,,,Bank,Food,,"Osteria alle Testiere","Calle del Mondo Novo 5801",https://maps.google.com/?q=Osteria+alle+Testiere+Venice,"Tiny seafood spot. Two seatings only — book weeks ahead.",,,,Venice,food|reservation|splurge
+,,,Bank,Activity,,"Burano + Torcello day trip","Burano, Venice",https://maps.google.com/?q=Burano+Venice,"Vaporetto Line 12 from Fondamente Nove. ~45 min each way. Bring the multi-day pass.",,,,Venice,day-trip|boat
+,,,Bank,Activity,,"Peggy Guggenheim Collection","Dorsoduro 701",https://maps.google.com/?q=Peggy+Guggenheim+Collection,"5-min walk from hotel. Small but fantastic modern art.",,,,Venice,museum`;
+
+function itinerary() {
+  return {
+    // state
+    rawCsv: '',
+    rows: [],
+    travelerName: '',
+    errors: [],
+    showImport: false,
+    currentDayIdx: 0,
+    peekOpen: false,
+    toast: '',
+    toastTimer: null,
+    // Multi-tenant routing
+    tripId: '',
+    isAdmin: false,
+    landing: false,
+    loading: false,
+    tripMissing: false,
+    // Ideas rail
+    locks: [],
+    showIdeas: false,
+    ideasCityFilter: 'all',
+    ideasTypeFilter: 'all',
+    ideasSort: 'city', // 'city' | 'type'
+    assignSheet: null,
+    assignSheetTime: '',
+
+    get storagePrefix() {
+      const ns = this.tripId || (this.isAdmin ? 'admin' : 'default');
+      return `tab-itin:${ns}`;
+    },
+
+    init() {
+      const params = new URLSearchParams(location.search);
+      this.tripId = (params.get('id') || params.get('trip') || '').trim();
+      this.isAdmin = params.get('admin') === '1';
+
+      // Load per-trip locks + name
+      this._hydrateLocal();
+
+      this.$watch('travelerName', v => {
+        if (!this.isAdmin) return;
+        localStorage.setItem(`${this.storagePrefix}:name`, v || '');
+      });
+
+      if (this.tripId) {
+        this.fetchTrip(this.tripId);
+      } else if (this.isAdmin) {
+        // Admin mode with no id: show import panel, hydrate last-pasted CSV
+        const saved = localStorage.getItem(`${this.storagePrefix}:csv`);
+        if (saved) {
+          this.rawCsv = saved;
+          this.parseCsv({ silent: true });
+        } else {
+          this.showImport = true;
+        }
+      } else {
+        // No id, not admin — branded landing
+        this.landing = true;
+      }
+
+      this.$nextTick(() => {
+        this.renderQr();
+        this.setupScrollSpy();
+      });
+    },
+
+    _hydrateLocal() {
+      const name  = localStorage.getItem(`${this.storagePrefix}:name`);
+      const locks = localStorage.getItem(`${this.storagePrefix}:locks`);
+      if (name) this.travelerName = name;
+      if (locks) {
+        try { this.locks = JSON.parse(locks) || []; } catch (_) { this.locks = []; }
+      }
+    },
+
+    async fetchTrip(id) {
+      this.loading = true;
+      this.tripMissing = false;
+      this.errors = [];
+      try {
+        const url = `trips/${encodeURIComponent(id)}.csv`;
+        const res = await fetch(url, { cache: 'no-cache' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const text = await res.text();
+        if (!text.trim()) throw new Error('Empty CSV');
+        this.rawCsv = text;
+        this.parseCsv({ silent: true, persist: false });
+      } catch (err) {
+        this.tripMissing = true;
+        this.errors.push(`Could not load itinerary "${id}". ${err.message || ''}`.trim());
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    saveLocks() {
+      localStorage.setItem(`${this.storagePrefix}:locks`, JSON.stringify(this.locks));
+    },
+
+    parseTags(str) {
+      return (str || '').split('|').map(t => t.trim()).filter(Boolean);
+    },
+
+    /* ---------- CSV handling ---------- */
+    parseCsv({ silent = false, persist = true } = {}) {
+      this.errors = [];
+      const text = (this.rawCsv || '').trim();
+      if (!text) {
+        this.rows = [];
+        if (!silent) this.flash('Paste a CSV first');
+        return;
+      }
+      const result = Papa.parse(text, { header: true, skipEmptyLines: true });
+      const headers = result.meta.fields || [];
+      const missing = REQUIRED_HEADERS.filter(h => !headers.includes(h));
+      if (missing.length) {
+        this.errors.push(`Missing required columns: ${missing.join(', ')}`);
+      }
+
+      const cleanRows = [];
+      result.data.forEach((row, i) => {
+        const date = (row.Date || '').trim();
+        const type = (row.Type || '').toLowerCase();
+        const _tags = this.parseTags(row.Tags);
+        const _ideaId = slugify((row.City || '') + '-' + (row.Title || ''));
+        if (!date) {
+          // Bank rows may have no date — they live in the Ideas pool
+          if (type === 'bank') {
+            cleanRows.push({
+              ...row,
+              _iso: '',
+              _minutes: 99999,
+              _tags,
+              _ideaId,
+            });
+          }
+          return;
+        }
+        if (!this.isValidDate(date)) {
+          this.errors.push(`Row ${i + 2}: invalid date "${date}" (expected YYYY-MM-DD or MM/DD/YYYY)`);
+          return;
+        }
+        cleanRows.push({
+          ...row,
+          _iso: this.toIsoDate(date),
+          _minutes: this.timeToMinutes(row.TimeSlot),
+          _tags,
+          _ideaId,
+        });
+      });
+
+      if (this.errors.length && missing.length) {
+        this.rows = [];
+        if (!silent) this.flash('Fix errors above');
+        return;
+      }
+
+      this.rows = cleanRows;
+      if (persist && this.isAdmin) {
+        localStorage.setItem(`${this.storagePrefix}:csv`, text);
+      }
+      this.showImport = false;
+      this.landing = false;
+      if (!silent) this.flash(`Loaded ${this.days.length} days`);
+      this.$nextTick(() => {
+        this.renderQr();
+        this.setupScrollSpy();
+      });
+    },
+
+    loadDemo() {
+      this.rawCsv = DEMO_CSV;
+      this.travelerName = this.travelerName || 'Kim & Steph';
+      this.parseCsv();
+    },
+
+    clearAll() {
+      if (!confirm('Clear all itinerary data?')) return;
+      localStorage.removeItem(`${this.storagePrefix}:csv`);
+      localStorage.removeItem(`${this.storagePrefix}:locks`);
+      this.rawCsv = '';
+      this.rows = [];
+      this.locks = [];
+      this.errors = [];
+      this.showImport = true;
+    },
+
+    /* ---------- Date/time helpers ---------- */
+    isValidDate(s) {
+      // Accept YYYY-MM-DD or MM/DD/YYYY
+      const iso = /^(\d{4})-(\d{2})-(\d{2})$/;
+      const us  = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+      let m, y, mo, d;
+      if ((m = s.match(iso))) { y = +m[1]; mo = +m[2]; d = +m[3]; }
+      else if ((m = s.match(us))) { y = +m[3]; mo = +m[1]; d = +m[2]; }
+      else return false;
+      if (mo < 1 || mo > 12 || d < 1 || d > 31) return false;
+      const dt = new Date(y, mo - 1, d);
+      return dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d;
+    },
+    toIsoDate(s) {
+      const us = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (us) {
+        const [, mo, d, y] = us;
+        return `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      }
+      return s;
+    },
+    timeToMinutes(t) {
+      if (!t) return 99999;
+      const s = t.trim();
+      let m = s.match(/^(\d{1,2}):(\d{2})\s*([ap]m)?$/i);
+      if (!m) {
+        m = s.match(/^(\d{1,2})\s*([ap]m)$/i);
+        if (m) return (parseInt(m[1]) % 12 + (/pm/i.test(m[2]) ? 12 : 0)) * 60;
+        return 99999;
+      }
+      let h = parseInt(m[1]);
+      const mm = parseInt(m[2]);
+      if (m[3]) {
+        if (/pm/i.test(m[3]) && h !== 12) h += 12;
+        if (/am/i.test(m[3]) && h === 12) h = 0;
+      }
+      return h * 60 + mm;
+    },
+    formatTime(t) {
+      if (!t) return '';
+      const mins = this.timeToMinutes(t);
+      if (mins === 99999) return t;
+      let h = Math.floor(mins / 60);
+      const mm = String(mins % 60).padStart(2, '0');
+      const ampm = h >= 12 ? 'pm' : 'am';
+      h = h % 12; if (h === 0) h = 12;
+      return `${h}:${mm}${ampm}`;
+    },
+    formatDate(iso) {
+      const [y, mo, d] = iso.split('-').map(Number);
+      return `${mo}/${d}/${y}`;
+    },
+    ordinal(n) {
+      return ORDINALS[n] || String(n);
+    },
+
+    /* ---------- Category icons ---------- */
+    catKey(category) {
+      if (!category) return 'activity';
+      const k = category.toLowerCase().replace(/[^a-z]/g, '');
+      if (CATEGORY_ICONS[k]) return k;
+      if (CATEGORY_ALIASES[k]) return CATEGORY_ALIASES[k];
+      return 'activity';
+    },
+    iconFor(category) {
+      return CATEGORY_ICONS[this.catKey(category)] || CATEGORY_ICONS.activity;
+    },
+
+    /* ---------- Derived days ---------- */
+    get days() {
+      if (!this.rows.length) return [];
+      const dated = this.rows.filter(r => r._iso);
+      const groups = {};
+      dated.forEach(r => {
+        (groups[r._iso] = groups[r._iso] || []).push(r);
+      });
+      const sortedDates = Object.keys(groups).sort();
+      return sortedDates.map((iso, i) => {
+        const items = groups[iso];
+        const firstWithWake  = items.find(r => r.WakeUp);
+        const firstWithSleep = items.find(r => r.Sleep);
+        const wakeUp = firstWithWake ? firstWithWake.WakeUp : '';
+        const sleep  = firstWithSleep ? firstWithSleep.Sleep : '';
+
+        const fixed = items
+          .filter(r => (r.Type || '').toLowerCase() === 'fixed')
+          .sort((a, b) => a._minutes - b._minutes);
+
+        // Locks assigned to this day
+        const dayLocks = this.locks.filter(l => l.dayIso === iso);
+        const locksAsEvents = dayLocks.map(l => {
+          const idea = this.getIdea(l.ideaId);
+          if (!idea) return null;
+          return {
+            ...idea,
+            _isLock: true,
+            _lockId: l.id,
+            TimeSlot: l.time || '',
+            _minutes: l.time ? this.timeToMinutes(l.time) : 99999,
+          };
+        }).filter(Boolean);
+
+        const timedLocks = locksAsEvents.filter(e => e._minutes !== 99999);
+        const flexible = locksAsEvents.filter(e => e._minutes === 99999);
+
+        const timeline = [...fixed, ...timedLocks].sort((a, b) => a._minutes - b._minutes);
+
+        const allItems = [...items, ...locksAsEvents];
+        const needsVeniceAlert = /venice|venezia/i.test(sleep)
+          || allItems.some(r => /venice|venezia/i.test(r.Location || ''))
+          || allItems.some(r => /venice/i.test(r.City || ''));
+        const needsZtlAlert = allItems.some(r => /driving/i.test(r.Category || ''));
+
+        let transitLabel;
+        if (!sleep) transitLabel = 'Check-out day';
+        else if (sleep === wakeUp) transitLabel = 'Nope!';
+        else if (!wakeUp) transitLabel = `Arriving at ${sleep}`;
+        else transitLabel = `Heading to ${sleep}`;
+
+        return {
+          iso,
+          dateLabel: this.formatDate(iso),
+          idx: i,
+          ordinalLabel: this.ordinal(i + 1),
+          wakeUp, sleep,
+          fixed, timeline, flexible,
+          needsVeniceAlert, needsZtlAlert,
+          transitLabel,
+        };
+      });
+    },
+
+    /* ---------- Ideas pool ---------- */
+    get ideas() {
+      return this.rows.filter(r => (r.Type || '').toLowerCase() === 'bank');
+    },
+    get ideaCities() {
+      const set = new Set();
+      this.ideas.forEach(i => { if (i.City) set.add(i.City); });
+      return Array.from(set);
+    },
+    get ideaTypes() {
+      const set = new Set();
+      this.ideas.forEach(i => set.add(this.catKey(i.Category)));
+      return Array.from(set).sort();
+    },
+    get filteredIdeas() {
+      const city = this.ideasCityFilter;
+      const type = this.ideasTypeFilter;
+      return this.ideas.filter(i => {
+        if (city !== 'all' && i.City !== city) return false;
+        if (type !== 'all' && this.catKey(i.Category) !== type) return false;
+        return true;
+      });
+    },
+    get groupedIdeas() {
+      const groups = {};
+      const order  = [];
+      const keyFor = this.ideasSort === 'type'
+        ? (i) => this.catKey(i.Category)
+        : (i) => i.City || 'Other';
+      this.filteredIdeas.forEach(i => {
+        const k = keyFor(i);
+        if (!groups[k]) { groups[k] = []; order.push(k); }
+        groups[k].push(i);
+      });
+      return order.map(k => ({ key: k, label: k, items: groups[k] }));
+    },
+    getIdea(id) {
+      return this.ideas.find(i => i._ideaId === id) || null;
+    },
+    lockCountFor(ideaId) {
+      return this.locks.filter(l => l.ideaId === ideaId).length;
+    },
+    locksForIdea(ideaId) {
+      return this.locks
+        .filter(l => l.ideaId === ideaId)
+        .map(l => {
+          const day = this.days.find(d => d.iso === l.dayIso);
+          return day ? { lockId: l.id, dayLabel: `Day ${day.idx + 1}` } : null;
+        })
+        .filter(Boolean);
+    },
+    dayMatchesCity(day, city) {
+      if (!city) return false;
+      const hay = `${day.wakeUp} ${day.sleep}`.toLowerCase();
+      return hay.includes(city.toLowerCase());
+    },
+
+    openAssign(ideaId) {
+      this.assignSheet = ideaId;
+      this.assignSheetTime = '';
+    },
+    closeAssign() {
+      this.assignSheet = null;
+      this.assignSheetTime = '';
+    },
+    addLock(ideaId, dayIso, time) {
+      if (!ideaId || !dayIso) return;
+      const id = `${ideaId}::${dayIso}::${Date.now()}`;
+      this.locks.push({ id, ideaId, dayIso, time: time || '' });
+      this.saveLocks();
+      const idea = this.getIdea(ideaId);
+      const day = this.days.find(d => d.iso === dayIso);
+      this.flash(`Added ${idea ? idea.Title : 'idea'} to Day ${day ? day.idx + 1 : '?'}`);
+      this.closeAssign();
+    },
+    removeLock(lockId) {
+      this.locks = this.locks.filter(l => l.id !== lockId);
+      this.saveLocks();
+      this.flash('Removed from day');
+    },
+
+    get dateRange() {
+      const isos = this.rows.map(r => r._iso).filter(Boolean).sort();
+      if (!isos.length) return '';
+      return `${this.formatDate(isos[0])} — ${this.formatDate(isos[isos.length - 1])}`;
+    },
+
+    get reservations() {
+      return this.rows
+        .filter(r => (r.Type || '').toLowerCase() === 'fixed' && r.ConfNo)
+        .sort((a, b) => a._iso.localeCompare(b._iso) || a._minutes - b._minutes);
+    },
+
+    get currentDay() {
+      return this.days[this.currentDayIdx] || null;
+    },
+
+    /* ---------- Actions ---------- */
+    openUrl(url) {
+      if (!url) return;
+      window.open(url, '_blank', 'noopener');
+    },
+
+    async copyConf(conf, evt) {
+      if (!conf) return;
+      const el = evt && evt.currentTarget;
+      try {
+        await navigator.clipboard.writeText(conf);
+      } catch (_) {
+        const ta = document.createElement('textarea');
+        ta.value = conf; document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); } catch (_) {}
+        ta.remove();
+      }
+      if (el) {
+        el.classList.add('copied');
+        const original = el.dataset.orig || el.textContent;
+        el.dataset.orig = original;
+        el.textContent = 'Copied ✓';
+        setTimeout(() => {
+          el.classList.remove('copied');
+          el.textContent = original;
+        }, 1200);
+      }
+      this.flash(`Copied ${conf}`);
+    },
+
+    flash(msg) {
+      this.toast = msg;
+      clearTimeout(this.toastTimer);
+      this.toastTimer = setTimeout(() => { this.toast = ''; }, 1800);
+    },
+
+    scrollToDay(idx) {
+      const el = document.querySelector(`[data-day-idx="${idx}"]`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    },
+
+    togglePeek() { this.peekOpen = !this.peekOpen; },
+
+    /* ---------- QR & scroll spy ---------- */
+    renderQr() {
+      const el = document.getElementById('qr-canvas');
+      if (!el || typeof QRCode === 'undefined') return;
+      el.innerHTML = '';
+      new QRCode(el, {
+        text: window.location.href,
+        width: 108,
+        height: 108,
+        colorDark: '#000',
+        colorLight: '#fff',
+        correctLevel: QRCode.CorrectLevel.M,
+      });
+    },
+
+    setupScrollSpy() {
+      if (this._spy) this._spy.disconnect();
+      const targets = document.querySelectorAll('[data-day-idx]');
+      if (!targets.length) return;
+      this._spy = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+          if (e.isIntersecting) {
+            this.currentDayIdx = parseInt(e.target.dataset.dayIdx, 10);
+          }
+        });
+      }, { rootMargin: '-40% 0px -55% 0px', threshold: 0 });
+      targets.forEach(t => this._spy.observe(t));
+    },
+  };
+}
