@@ -78,6 +78,7 @@ function itinerary() {
     rawCsv: '',
     rows: [],
     showEditor: false,
+    qrOverride: '',
     travelerName: '',
     errors: [],
     showImport: false,
@@ -117,6 +118,10 @@ function itinerary() {
         if (!this.isAdmin) return;
         localStorage.setItem(`${this.storagePrefix}:name`, v || '');
       });
+      this.$watch('qrOverride', v => {
+        if (!this.isAdmin) return;
+        localStorage.setItem(`${this.storagePrefix}:qrurl`, (v || '').trim());
+      });
 
       if (this.tripId) {
         this.fetchTrip(this.tripId);
@@ -143,9 +148,23 @@ function itinerary() {
     _hydrateLocal() {
       const name  = localStorage.getItem(`${this.storagePrefix}:name`);
       const locks = localStorage.getItem(`${this.storagePrefix}:locks`);
+      const qrurl = localStorage.getItem(`${this.storagePrefix}:qrurl`);
       if (name) this.travelerName = name;
+      if (qrurl) this.qrOverride = qrurl;
       if (locks) {
         try { this.locks = JSON.parse(locks) || []; } catch (_) { this.locks = []; }
+      }
+    },
+
+    get qrTargetUrl() {
+      const override = (this.qrOverride || '').trim();
+      if (override) return override;
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('admin');
+        return url.toString();
+      } catch (_) {
+        return window.location.href;
       }
     },
 
@@ -351,10 +370,12 @@ function itinerary() {
       if (!confirm('Clear all itinerary data?')) return;
       localStorage.removeItem(`${this.storagePrefix}:csv`);
       localStorage.removeItem(`${this.storagePrefix}:locks`);
+      localStorage.removeItem(`${this.storagePrefix}:qrurl`);
       this.rawCsv = '';
       this.rows = [];
       this.locks = [];
       this.errors = [];
+      this.qrOverride = '';
       this.showImport = true;
       this.showEditor = false;
     },
@@ -647,7 +668,7 @@ function itinerary() {
       if (!el || typeof QRCode === 'undefined') return;
       el.innerHTML = '';
       new QRCode(el, {
-        text: window.location.href,
+        text: this.qrTargetUrl,
         width: 108,
         height: 108,
         colorDark: '#000',

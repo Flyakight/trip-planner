@@ -113,6 +113,15 @@
       <button class="btn secondary" @click="printToPdf()">Print / Save PDF</button>
       <button class="btn link" @click="clearAll()">Clear all</button>
     </div>
+    <div class="qr-override no-print" x-show="isAdmin && rows.length">
+      <label for="qrOverride">QR link override (optional, for pre-launch print)</label>
+      <input id="qrOverride" type="url" x-model="qrOverride" @change="renderQr()"
+             placeholder="https://itinerary.thereandback.club/?id=olicoy-italia-2026-xxxx">
+      <div class="btn-row">
+        <button class="btn secondary" @click="renderQr()">Apply to QR</button>
+        <button class="btn link" @click="qrOverride=''; renderQr()">Use current page URL</button>
+      </div>
+    </div>
 
     <div class="editor-panel no-print" x-show="isAdmin && rows.length && showEditor" x-transition>
       <div class="editor-head">

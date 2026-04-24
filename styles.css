@@ -403,6 +403,33 @@ a:hover { color: #2A4A2B; }
   padding: 0.45rem 0.55rem;
 }
 
+.qr-override {
+  background: var(--cream-2);
+  border: 1px solid var(--forest-faint);
+  border-radius: 6px;
+  padding: 0.7rem 0.8rem;
+  margin: 0 0 1rem;
+}
+.qr-override label {
+  display: block;
+  font-family: var(--display);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--forest);
+  margin-bottom: 0.35rem;
+}
+.qr-override input {
+  width: 100%;
+  border: 1px solid var(--forest-faint);
+  border-radius: 4px;
+  background: #fff;
+  font-family: 'Menlo', monospace;
+  font-size: 0.78rem;
+  color: var(--plum);
+  padding: 0.48rem 0.55rem;
+}
+
 /* ---------- Cover ---------- */
 .cover-title {
   font-family: var(--display);
