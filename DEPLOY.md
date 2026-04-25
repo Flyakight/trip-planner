@@ -101,6 +101,37 @@ https://trips.thereandback.club/?id=kim-steph-italy-2026-k7n4
 
 ---
 
+## 6 · One-time: bind the `LOCKS` KV namespace (cross-device sync)
+
+The app stores each client's day-assignment picks ("locks") on
+Cloudflare KV so they sync across phones. Without this binding, the
+app silently falls back to per-browser localStorage — still works, but
+each device sees its own picks.
+
+1. Cloudflare dashboard → **Storage & Databases → KV** → **Create a
+   namespace**. Name it `thereandback-locks`. Save.
+2. Cloudflare dashboard → **Workers & Pages** → your `thereandback-itinerary`
+   project → **Settings** → **Functions** → **KV namespace bindings**
+   → **Add binding**:
+   - **Variable name:** `LOCKS` (must be exactly this — the Function reads `env.LOCKS`)
+   - **KV namespace:** select `thereandback-locks`
+3. Save. Cloudflare redeploys the Functions in ~10s.
+
+That's it. Test by:
+1. Open `trips.thereandback.club/?id=<slug>` on phone A → tap an idea → "Add to Day 3".
+2. Open the same URL on phone B → the Day 3 lock should already be there.
+
+**Free tier:** 100k reads + 1k writes per day, 1 GB storage. You'd hit
+the write limit at ~50–100 active clients tapping all day. Plenty of
+headroom.
+
+**Security:** the trip slug is the password, same as the CSV. The
+endpoint validates `^[a-z0-9-]{4,80}$` and rejects payloads >50 KB to
+guard against abuse. There's no auth beyond the URL — same threat
+model as the CSV that lives in `/trips/`.
+
+---
+
 ## Tips
 
 - **Unguessable URLs.** The entropy suffix (e.g. `-k7n4`) is the only
@@ -113,3 +144,9 @@ https://trips.thereandback.club/?id=kim-steph-italy-2026-k7n4
   to see the import panel overlay (doesn't affect the client's view —
   they don't have that URL).
 - **Rollback.** `git revert <commit>` and push. Cloudflare redeploys.
+- **Locks ≠ CSVs.** Editing `trips/<slug>.csv` does NOT clear a client's
+  locks. Locks are keyed by `_ideaId = slugify(City + '-' + Title)`, so
+  as long as you don't rename an existing idea, their day-assignments
+  survive every redeploy. (Renaming an idea silently orphans the lock.)
+- **Inspect locks for a trip.** Cloudflare dashboard → KV → `thereandback-locks`
+  → search by trip slug. You can read or delete entries directly there.

@@ -180,6 +180,8 @@ function itinerary() {
         if (!text.trim()) throw new Error('Empty CSV');
         this.rawCsv = text;
         this.parseCsv({ silent: true, persist: false });
+        // After CSV is loaded, sync locks from cloud (KV via Pages Function)
+        await this.fetchLocks(id);
       } catch (err) {
         this.tripMissing = true;
         this.errors.push(`Could not load itinerary "${id}". ${err.message || ''}`.trim());
@@ -188,8 +190,56 @@ function itinerary() {
       }
     },
 
+    /**
+     * Hydrate locks from /api/locks/<trip>. Server is source of truth when present.
+     * If server has no record yet but localStorage does, push local up (migration).
+     * On any failure, silently keep using localStorage (offline / no Functions in dev).
+     */
+    async fetchLocks(id) {
+      try {
+        const res = await fetch(`/api/locks/${encodeURIComponent(id)}`, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const cloud = await res.json();
+        if (Array.isArray(cloud) && cloud.length) {
+          this.locks = cloud;
+          localStorage.setItem(`${this.storagePrefix}:locks`, JSON.stringify(cloud));
+        } else if (this.locks.length) {
+          // Server is empty but local has data — migrate up
+          this._schedulePushLocks();
+        }
+        this._cloudLocksAvailable = true;
+      } catch (_) {
+        // Offline, dev server without Functions, or KV not bound — that's fine.
+        this._cloudLocksAvailable = false;
+      }
+    },
+
+    _schedulePushLocks() {
+      if (!this.tripId) return;
+      clearTimeout(this._lockPushTimer);
+      this._lockPushTimer = setTimeout(() => this._pushLocks(), 600);
+    },
+
+    async _pushLocks() {
+      if (!this.tripId) return;
+      try {
+        const res = await fetch(`/api/locks/${encodeURIComponent(this.tripId)}`, {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(this.locks),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        this._cloudLocksAvailable = true;
+      } catch (_) {
+        // Network/Function failure — localStorage already has the latest copy.
+        this._cloudLocksAvailable = false;
+      }
+    },
+
     saveLocks() {
       localStorage.setItem(`${this.storagePrefix}:locks`, JSON.stringify(this.locks));
+      // Cloud sync: debounced PUT (only when we're viewing a trip URL)
+      if (this.tripId) this._schedulePushLocks();
     },
 
     parseTags(str) {
