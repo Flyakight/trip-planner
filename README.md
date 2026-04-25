@@ -55,6 +55,41 @@ Recommended flow:
 3. Open `*-review.csv` and fix low-confidence rows first.
 4. Rename/finalize the draft CSV into `trips/<slug>.csv` when ready.
 
+## Import ideas from a Google My Map (KML)
+
+For the Recommended Activities rail (Bank rows), point a KML export at
+the converter:
+
+```bash
+# In Google My Maps: ⋮ → Export to KML/KMZ → check "Export as KML"
+
+# Generate a draft CSV of Bank rows:
+python3 scripts/kml_to_bank_csv.py \
+  --input ./italy-ideas.kml \
+  --output trips/drafts/italy-ideas-bank.csv
+
+# Or append directly into a live trip CSV:
+python3 scripts/kml_to_bank_csv.py \
+  --input ./italy-ideas.kml \
+  --output trips/kim-steph-italy-2026-k7n4.csv \
+  --append
+```
+
+Mapping rules:
+
+- `<Folder>` name → `City` (so organize your map by city for free city tagging).
+- `<name>` → `Title`. `<description>` → `Details` (HTML stripped).
+- `<Point>` coords → `MapLink` (Google Maps deep link).
+- `Category` is inferred from keywords: anything matching ristorante /
+  trattoria / osteria / pizzeria / gelateria / caffè / enoteca / etc.
+  becomes `Food`; hotel / albergo / b&b / residence becomes `Hotel`;
+  everything else is `Activity` (override with `--category-default`).
+- `Tags` are inferred conservatively (food / view / reservation / splurge
+  / morning / evening). Quick to clean up after.
+
+Use `--dry-run` to preview rows without touching disk, and
+`--city-override Rome` for KMLs that don't use folder structure.
+
 ## CSV schema
 
 Required columns:
