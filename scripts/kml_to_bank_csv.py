@@ -57,9 +57,11 @@ FOOD_KEYWORDS = {
     "ristorante", "ristoro", "trattoria", "osteria", "hostaria", "pizzeria",
     "gelateria", "gelato", "caffè", "caffe", "cafe", "café", "bar",
     "enoteca", "pasticceria", "panificio", "forno", "rosticceria", "tavola",
-    "pub", "wine", "vino", "restaurant", "eatery", "eat ", "dining",
+    "pub", "wine", "vino", "restaurant", "eatery", "eat", "dining",
     "brunch", "breakfast", "lunch", "dinner", "supper", "bistro",
-    "michelin",
+    "michelin", "risotteria", "spaghetteria", "cucina", "cuisine",
+    "vegetarian", "vegan", "tapas", "cocktail", "mercato centrale",
+    "tasting menu", "food vendors", "food market",
 }
 HOTEL_KEYWORDS = {
     "hotel", "albergo", "b&b", "bnb", "bed and breakfast", "guesthouse",
@@ -167,11 +169,22 @@ def _clean_html(s: str) -> str:
 
 # ---------- Categorization ----------
 
+def _kw_regex(keywords: set[str]) -> re.Pattern:
+    # Word-boundary matching so "pub" doesn't catch "public", "bar" doesn't catch "Bardini", etc.
+    parts = sorted(keywords, key=len, reverse=True)
+    return re.compile(r"\b(?:" + "|".join(re.escape(k.strip()) for k in parts) + r")\b",
+                      re.IGNORECASE | re.UNICODE)
+
+
+_FOOD_RE = _kw_regex(FOOD_KEYWORDS)
+_HOTEL_RE = _kw_regex(HOTEL_KEYWORDS)
+
+
 def infer_category(name: str, desc: str, default: str) -> str:
-    blob = f"{name} {desc}".lower()
-    if any(k in blob for k in HOTEL_KEYWORDS):
+    blob = f"{name} {desc}"
+    if _HOTEL_RE.search(blob):
         return "Hotel"
-    if any(k in blob for k in FOOD_KEYWORDS):
+    if _FOOD_RE.search(blob):
         return "Food"
     return default
 
