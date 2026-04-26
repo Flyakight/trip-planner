@@ -10,11 +10,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Caprasimo&family=EB+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="styles.css?v=13">
+  <link rel="stylesheet" href="styles.css?v=14">
 
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="app.js?v=14"></script>
+  <script src="app.js?v=15"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body x-data="itinerary()" x-cloak :class="{'ideas-mode': showIdeas}">
@@ -391,6 +391,22 @@
             </div>
           </template>
         </div>
+
+        <section class="important-links" x-show="importantLinks.length || isAdmin">
+          <div class="cover-section-title">Important Links</div>
+          <div class="important-link-list">
+            <template x-for="link in importantLinks" :key="link._rowId">
+              <a class="important-link-card" :href="link._href" target="_blank" rel="noopener">
+                <span class="important-link-title" x-text="link.Title"></span>
+                <span class="important-link-note" x-show="link._note" x-text="link._note"></span>
+              </a>
+            </template>
+          </div>
+          <div class="important-link-empty no-print" x-show="isAdmin && !importantLinks.length">
+            <span>No important links yet.</span>
+            <button class="chip" @click="openNewItemForm(itemTemplates().find(t => t.label === 'Important link'))">+ Add important link</button>
+          </div>
+        </section>
 
         <div class="resources">
           <div>

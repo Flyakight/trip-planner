@@ -633,6 +633,51 @@ a:hover { color: #2A4A2B; }
 }
 .res-card .res-meta { font-size: 0.9rem; color: var(--muted); font-style: italic; }
 
+.important-links {
+  margin-top: 1.6rem;
+}
+.important-link-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
+}
+.important-link-card {
+  display: block;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--forest-faint);
+  border-radius: 8px;
+  background: var(--cream-3);
+  color: var(--plum);
+  text-decoration: none;
+}
+.important-link-card:hover {
+  border-color: var(--forest);
+  background: var(--card-hi);
+  color: var(--plum);
+}
+.important-link-title {
+  display: block;
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.important-link-note {
+  display: block;
+  margin-top: 0.18rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-style: italic;
+}
+.important-link-empty {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .resources {
   margin-top: 2rem;
   display: flex;
@@ -1912,4 +1957,3 @@ body { padding-bottom: calc(var(--peek-h) + 1.5rem); }
   .trip-card-grid { grid-template-columns: 1fr; }
   .trip-card-actions .btn { flex: 1 1 auto; text-align: center; }
 }
-

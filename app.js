@@ -333,6 +333,7 @@ function itinerary() {
         { label: 'Car', category: 'Driving', type: 'Fixed', tags: 'driving' },
         { label: 'Dining', category: 'Food', type: 'Fixed', tags: 'food|reservation' },
         { label: 'Activity', category: 'Activity', type: 'Fixed', tags: 'activity' },
+        { label: 'Important link', category: 'Activity', type: 'Bank', tags: 'important-link' },
         { label: 'Flexible idea', category: 'Activity', type: 'Bank', tags: 'idea' },
       ];
     },
@@ -728,7 +729,22 @@ function itinerary() {
 
     /* ---------- Ideas pool ---------- */
     get ideas() {
-      return this.rows.filter(r => (r.Type || '').toLowerCase() === 'bank');
+      return this.rows.filter(r => (r.Type || '').toLowerCase() === 'bank' && !this.isImportantLink(r));
+    },
+    isImportantLink(row) {
+      const tags = row?._tags || this.parseTags(row?.Tags || '');
+      const category = (row?.Category || '').toLowerCase();
+      return category === 'link'
+        || tags.some(t => ['important-link', 'important', 'link'].includes(t.toLowerCase()));
+    },
+    get importantLinks() {
+      return this.rows
+        .filter(r => this.isImportantLink(r) && (r.TicketLink || r.MapLink))
+        .map(r => ({
+          ...r,
+          _href: r.TicketLink || r.MapLink,
+          _note: r.Details || r.Location || '',
+        }));
     },
     get ideaCities() {
       const set = new Set();

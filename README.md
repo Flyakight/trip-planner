@@ -125,6 +125,9 @@ City, Tags
 - **TimeSlot** — `HH:MM` (24h) or `h:mm am/pm`. Blank for all-day items.
 - **Tags** — pipe-delimited, e.g. `food|reservation|splurge`.
 - **MapLink / TicketLink** — full URLs. Render as tappable chips.
+- **Important links** — add `important-link` to `Tags` and put the URL
+  in `TicketLink` or `MapLink`; the item appears on the trip overview
+  instead of the Ideas rail.
 
 A Venice alert fires automatically for any day whose `Sleep` or item
 `Location`/`City` mentions Venice. A ZTL alert fires for any day with a
