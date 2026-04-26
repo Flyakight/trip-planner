@@ -14,7 +14,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="app.js?v=16"></script>
+  <script src="app.js?v=17"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body x-data="itinerary()" x-cloak :class="{'ideas-mode': showIdeas}">
@@ -159,7 +159,7 @@
       <button class="btn link" @click="showImport = true">✎ Edit CSV</button>
       <button class="btn secondary" @click="openNewItemForm(itemTemplates()[0])">+ Add item</button>
       <button class="btn link" @click="openEditor()">✎ Edit rows</button>
-      <button class="btn link" @click="saveEditedCsv()">Save edits</button>
+      <button class="btn link" @click="saveEditedCsv()" :disabled="publishing" x-text="publishing ? 'Publishing…' : 'Save edits'"></button>
       <button class="btn link" @click="downloadEditedCsv()">Download CSV</button>
       <button class="btn secondary" @click="printToPdf()">Print / Save PDF</button>
       <button class="btn link" @click="clearAll()">Clear all</button>

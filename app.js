@@ -85,6 +85,7 @@ function itinerary() {
     qrOverride: '',
     travelerName: '',
     errors: [],
+    publishing: false,
     showImport: false,
     currentDayIdx: 0,
     peekOpen: false,
@@ -177,10 +178,7 @@ function itinerary() {
       this.tripMissing = false;
       this.errors = [];
       try {
-        const url = `trips/${encodeURIComponent(id)}.csv`;
-        const res = await fetch(url, { cache: 'no-cache' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const text = await res.text();
+        const text = await this.fetchPublishedTripCsv(id);
         if (!text.trim()) throw new Error('Empty CSV');
         this.rawCsv = text;
         this.parseCsv({ silent: true, persist: false });
@@ -192,6 +190,18 @@ function itinerary() {
       } finally {
         this.loading = false;
       }
+    },
+    async fetchPublishedTripCsv(id) {
+      const encoded = encodeURIComponent(id);
+      try {
+        const published = await fetch(`/api/trips/${encoded}`, { cache: 'no-store' });
+        if (published.ok) return published.text();
+      } catch (_) {
+        // Static CSV fallback below keeps the app usable without Functions/KV.
+      }
+      const res = await fetch(`trips/${encoded}.csv`, { cache: 'no-cache' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.text();
     },
 
     /**
@@ -379,7 +389,7 @@ function itinerary() {
       this.itemFormIndex = -1;
       this.itemFormDraft = null;
     },
-    saveItemForm() {
+    async saveItemForm() {
       if (!this.itemFormDraft) return;
       const draft = { ...this.itemFormDraft };
       if ((draft.Type || '').toLowerCase() === 'bank') {
@@ -409,6 +419,7 @@ function itinerary() {
       }
       this.syncRawCsvFromRows();
       this.closeItemForm();
+      if (this.tripId && this.isAdmin) await this.publishEditedCsv({ quiet: true });
       this.$nextTick(() => this.setupScrollSpy());
     },
     deleteItemFromForm() {
@@ -494,10 +505,33 @@ function itinerary() {
       this.syncRawCsvFromRows();
       this.flash('Row removed');
     },
-    saveEditedCsv() {
+    async saveEditedCsv() {
       this.rows = this.rows.map(r => this.normalizeRow(r));
       this.syncRawCsvFromRows();
-      this.flash('CSV updated');
+      if (this.tripId) {
+        await this.publishEditedCsv();
+      } else {
+        this.flash('CSV updated locally');
+      }
+    },
+    async publishEditedCsv({ quiet = false } = {}) {
+      if (!this.tripId || !this.isAdmin) return;
+      const csv = this.syncRawCsvFromRows();
+      this.publishing = true;
+      try {
+        const res = await fetch(`/api/trips/${encodeURIComponent(this.tripId)}`, {
+          method: 'PUT',
+          headers: { 'content-type': 'text/csv; charset=utf-8' },
+          body: csv,
+        });
+        const msg = await res.text();
+        if (!res.ok) throw new Error(msg || `HTTP ${res.status}`);
+        if (!quiet) this.flash('Published to client view');
+      } catch (err) {
+        this.flash(`Saved locally. Publish failed: ${err.message || err}`);
+      } finally {
+        this.publishing = false;
+      }
     },
     downloadEditedCsv() {
       const csv = this.syncRawCsvFromRows();

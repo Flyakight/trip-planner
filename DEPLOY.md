@@ -150,3 +150,27 @@ model as the CSV that lives in `/trips/`.
   survive every redeploy. (Renaming an idea silently orphans the lock.)
 - **Inspect locks for a trip.** Cloudflare dashboard → KV → `thereandback-locks`
   → search by trip slug. You can read or delete entries directly there.
+
+## 7 · Optional: bind the `ITINERARIES` KV namespace (admin publish)
+
+The admin form/editor can publish edited CSV content directly so the
+client URL sees changes without replacing `trips/<slug>.csv` in git.
+The static CSV remains the fallback if no published override exists.
+
+1. Cloudflare dashboard → **Storage & Databases → KV** → **Create a
+   namespace**. Name it `thereandback-itineraries`. Save.
+2. Cloudflare dashboard → **Workers & Pages** → your Pages project →
+   **Settings** → **Bindings** → **Add binding**:
+   - **Variable name:** `ITINERARIES`
+   - **KV namespace:** select `thereandback-itineraries`
+3. Save and redeploy.
+
+Test with:
+
+```
+https://itinerary.thereandback.club/api/trips/<slug>
+```
+
+Before anything has been published from admin, that endpoint returns a
+404 JSON message and the app falls back to `trips/<slug>.csv`. After an
+admin save publishes, it returns the CSV from KV.
