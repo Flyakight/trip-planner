@@ -90,6 +90,20 @@ Mapping rules:
 Use `--dry-run` to preview rows without touching disk, and
 `--city-override Rome` for KMLs that don't use folder structure.
 
+After running the converter, clean the drafts before merging:
+
+```bash
+# Dedupes by (City, Title), drops orphan pins whose title is just a
+# bare street address with no description. Edits files in place.
+python3 scripts/clean_bank_csv.py trips/drafts/olicoy-*.csv
+
+# Preview without writing:
+python3 scripts/clean_bank_csv.py --dry-run trips/drafts/olicoy-*.csv
+```
+
+Recommended flow: run the converter → run the cleaner → spot-check the
+draft → append to the live trip CSV (`--append`) and push.
+
 ## CSV schema
 
 Required columns:
