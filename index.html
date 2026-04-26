@@ -10,11 +10,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Caprasimo&family=EB+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="styles.css?v=11">
+  <link rel="stylesheet" href="styles.css?v=13">
 
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="app.js?v=12"></script>
+  <script src="app.js?v=14"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body x-data="itinerary()" x-cloak :class="{'ideas-mode': showIdeas}">
@@ -45,6 +45,56 @@
       <h1 class="landing-title">We couldn't find that trip.</h1>
       <p class="landing-sub">The link may be expired or mistyped. Double-check the URL with your trip designer.</p>
       <p class="landing-foot"><a href="mailto:kate@thereandback.club">Email Kate</a> if you need help.</p>
+    </div>
+  </section>
+
+  <!-- Admin home: list of all trips (shown at /?admin=1 with no id) -->
+  <section class="admin-index no-print" x-show="isAdmin && !tripId" x-transition>
+    <div class="admin-index-inner">
+      <div class="admin-index-head">
+        <div class="landing-mark">ThereandBack.Club <span class="ai-eyebrow">· admin</span></div>
+        <h1 class="admin-index-title">Your trips</h1>
+        <p class="admin-index-sub">Open one to view, edit, or share. Each trip is a self-contained CSV — onboard a new one with the scaffolder script (instructions below).</p>
+      </div>
+
+      <div class="admin-index-loading" x-show="tripListLoading">Loading trips…</div>
+      <div class="admin-index-error" x-show="tripListError" x-text="tripListError"></div>
+
+      <div class="trip-card-grid" x-show="!tripListLoading && tripList.length">
+        <template x-for="t in tripList" :key="t.slug">
+          <article class="trip-card">
+            <div class="trip-card-head">
+              <div class="trip-card-name" x-text="t.name"></div>
+              <div class="trip-card-meta">
+                <span class="trip-card-year" x-text="t.year"></span>
+                <span class="trip-card-sep" x-show="t.createdAt"> · </span>
+                <span class="trip-card-created" x-text="t.createdAt ? ('added ' + t.createdAt) : ''"></span>
+              </div>
+              <code class="trip-card-slug" x-text="t.slug"></code>
+            </div>
+            <div class="trip-card-actions">
+              <a class="btn" :href="tripUrl(t.slug, { admin: true })">Open as admin</a>
+              <a class="btn secondary" :href="tripUrl(t.slug)" target="_blank" rel="noopener">Open as client ↗</a>
+              <button class="btn link" @click="copyClientLink(t.slug, $event)">Copy client link</button>
+            </div>
+          </article>
+        </template>
+      </div>
+
+      <div class="admin-index-empty" x-show="!tripListLoading && !tripList.length && !tripListError">
+        <p>No trips registered yet. Run the scaffolder below to create your first one.</p>
+      </div>
+
+      <div class="admin-index-newtrip">
+        <h2>+ New trip</h2>
+        <p>From the project root, run:</p>
+        <pre><code>python3 scripts/new_trip.py "Client Name Destination"</code></pre>
+        <p class="hint">
+          That creates <code>trips/&lt;slug&gt;-&lt;year&gt;-&lt;entropy&gt;.csv</code>, registers it in
+          <code>trips/index.json</code>, and prints the client + admin URLs. Then
+          <code>git add</code>, commit, and push to deploy.
+        </p>
+      </div>
     </div>
   </section>
 
@@ -82,7 +132,7 @@
     </nav>
   </div>
 
-  <div class="app-layout" x-show="!landing && !loading && !tripMissing">
+  <div class="app-layout" x-show="!landing && !loading && !tripMissing && !(isAdmin && !tripId)">
   <main class="main-column">
   <!-- Cover / Trip overview -->
   <section class="page cover-page">
@@ -107,6 +157,7 @@
 
     <div class="no-print" x-show="isAdmin && !showImport && rows.length" style="margin-bottom:1.25rem;">
       <button class="btn link" @click="showImport = true">✎ Edit CSV</button>
+      <button class="btn secondary" @click="openNewItemForm(itemTemplates()[0])">+ Add item</button>
       <button class="btn link" @click="openEditor()">✎ Edit rows</button>
       <button class="btn link" @click="saveEditedCsv()">Save edits</button>
       <button class="btn link" @click="downloadEditedCsv()">Download CSV</button>
@@ -123,10 +174,115 @@
       </div>
     </div>
 
+    <div class="item-form-panel no-print" x-show="isAdmin && itemFormOpen" x-transition>
+      <template x-if="itemFormDraft">
+        <div>
+          <div class="item-form-head">
+            <div>
+              <div class="form-eyebrow" x-text="itemFormMode === 'edit' ? 'Edit itinerary item' : 'Add itinerary item'"></div>
+              <h2 x-text="itemFormDraft.Title || 'New item'"></h2>
+            </div>
+            <button class="btn link" @click="closeItemForm()">Close</button>
+          </div>
+
+          <div class="template-strip" aria-label="Item templates">
+            <template x-for="tpl in itemTemplates()" :key="tpl.label">
+              <button class="template-btn"
+                      :class="{active: itemFormDraft.Category === tpl.category && itemFormDraft.Type === tpl.type}"
+                      @click="applyItemTemplate(tpl)"
+                      type="button"
+                      x-text="tpl.label"></button>
+            </template>
+          </div>
+
+          <div class="form-grid">
+            <label>
+              <span>Type</span>
+              <select x-model="itemFormDraft.Type">
+                <option>Fixed</option>
+                <option>Bank</option>
+              </select>
+            </label>
+            <label>
+              <span>Category</span>
+              <select x-model="itemFormDraft.Category">
+                <option>Hotel</option>
+                <option>Flight</option>
+                <option>Train</option>
+                <option>Transit</option>
+                <option>Driving</option>
+                <option>Food</option>
+                <option>Activity</option>
+              </select>
+            </label>
+            <label>
+              <span>Date</span>
+              <input type="text" x-model="itemFormDraft.Date" :disabled="itemFormDraft.Type === 'Bank'" placeholder="YYYY-MM-DD">
+            </label>
+            <label>
+              <span>Time</span>
+              <input type="time" x-model="itemFormDraft.TimeSlot" :disabled="itemFormDraft.Type === 'Bank'">
+            </label>
+            <label class="form-wide">
+              <span>Title</span>
+              <input type="text" x-model="itemFormDraft.Title" placeholder="Check in: Hotel Artemide">
+            </label>
+            <label class="form-wide">
+              <span>Location</span>
+              <input type="text" x-model="itemFormDraft.Location" placeholder="Address, venue, station, airport">
+            </label>
+            <label>
+              <span>Wake up</span>
+              <input type="text" x-model="itemFormDraft.WakeUp" :disabled="itemFormDraft.Type === 'Bank'" placeholder="Hotel or city">
+            </label>
+            <label>
+              <span>Sleep</span>
+              <input type="text" x-model="itemFormDraft.Sleep" :disabled="itemFormDraft.Type === 'Bank'" placeholder="Hotel or city">
+            </label>
+            <label>
+              <span>Confirmation</span>
+              <input type="text" x-model="itemFormDraft.ConfNo" placeholder="ABC-123">
+            </label>
+            <label>
+              <span>Cost</span>
+              <input type="text" x-model="itemFormDraft.Cost" placeholder="$ / €">
+            </label>
+            <label>
+              <span>City</span>
+              <input type="text" x-model="itemFormDraft.City" placeholder="Rome">
+            </label>
+            <label>
+              <span>Tags</span>
+              <input type="text" x-model="itemFormDraft.Tags" placeholder="food|reservation">
+            </label>
+            <label class="form-wide">
+              <span>Map link</span>
+              <input type="url" x-model="itemFormDraft.MapLink" placeholder="https://maps.google.com/...">
+            </label>
+            <label class="form-wide">
+              <span>Booking / ticket link</span>
+              <input type="url" x-model="itemFormDraft.TicketLink" placeholder="https://...">
+            </label>
+            <label class="form-wide">
+              <span>Details</span>
+              <textarea x-model="itemFormDraft.Details" placeholder="Client-facing notes, arrival instructions, dress code, reminders"></textarea>
+            </label>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn" @click="saveItemForm()">Save item</button>
+            <button class="btn secondary" @click="closeItemForm()">Cancel</button>
+            <button class="btn link danger" x-show="itemFormMode === 'edit'" @click="deleteItemFromForm()">Delete item</button>
+          </div>
+        </div>
+      </template>
+    </div>
+
     <div class="editor-panel no-print" x-show="isAdmin && rows.length && showEditor" x-transition>
       <div class="editor-head">
         <h2>Manual row editor</h2>
         <div class="editor-actions">
+          <button class="btn secondary" @click="openNewItemForm(itemTemplates()[0])">+ Form item</button>
           <button class="btn secondary" @click="addRow('fixed')">+ Fixed row</button>
           <button class="btn secondary" @click="addRow('bank')">+ Bank row</button>
           <button class="btn link" @click="closeEditor()">Hide editor</button>
@@ -230,6 +386,7 @@
                         :title="'Copy ' + r.ConfNo"></button>
                 <span class="chip chip-cost" x-show="r.Cost" x-text="r.Cost"></span>
                 <a class="chip" x-show="r.TicketLink" :href="r.TicketLink" target="_blank" rel="noopener">View booking</a>
+                <button class="chip no-print" x-show="isAdmin" @click="openEditItemForm(r._rowId)">Edit</button>
               </div>
             </div>
           </template>
@@ -254,9 +411,10 @@
     </template>
 
     <template x-if="isAdmin && !rows.length && !errors.length && !loading">
-      <p class="hint" style="color:var(--muted); margin-top:2rem;">
-        Paste a CSV above — or click <strong>Load demo</strong> to see the Italy 2026 sample.
-      </p>
+      <div class="hint" style="color:var(--muted); margin-top:2rem;">
+        <p>Paste a CSV above, click <strong>Load demo</strong>, or start from a structured form item.</p>
+        <button class="btn secondary" @click="openNewItemForm(itemTemplates()[0])">+ Add first item</button>
+      </div>
     </template>
 
   </section>
@@ -324,6 +482,7 @@
                           x-text="e.ConfNo"
                           :title="'Copy ' + e.ConfNo"></button>
                   <span class="chip chip-cost" x-show="e.Cost" x-text="e.Cost"></span>
+                  <button class="chip no-print" x-show="isAdmin && e._rowId" @click="openEditItemForm(e._rowId)">Edit</button>
                   <button class="chip chip-remove no-print" x-show="e._isLock" @click="removeLock(e._lockId)" title="Remove from this day">Remove</button>
                 </div>
               </div>
@@ -350,6 +509,7 @@
                   <div class="event-actions">
                     <a class="chip" x-show="e.MapLink" :href="e.MapLink" target="_blank" rel="noopener">Open in Maps</a>
                     <a class="chip" x-show="e.TicketLink" :href="e.TicketLink" target="_blank" rel="noopener">Book / Info</a>
+                    <button class="chip no-print" x-show="isAdmin && e._rowId" @click="openEditItemForm(e._rowId)">Edit</button>
                     <button class="chip chip-remove no-print" @click="removeLock(e._lockId)">Remove</button>
                   </div>
                 </div>
@@ -431,6 +591,7 @@
               <div class="idea-actions">
                 <a class="chip" x-show="idea.MapLink" :href="idea.MapLink" target="_blank" rel="noopener">Map</a>
                 <button class="chip chip-add" @click="openAssign(idea._ideaId)">+ Add to day</button>
+                <button class="chip no-print" x-show="isAdmin" @click="openEditItemForm(idea._rowId)">Edit</button>
               </div>
               <div class="idea-locked" x-show="lockCountFor(idea._ideaId)">
                 <span class="il-label">On</span>

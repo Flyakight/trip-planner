@@ -78,6 +78,10 @@ function itinerary() {
     rawCsv: '',
     rows: [],
     showEditor: false,
+    itemFormOpen: false,
+    itemFormMode: 'new',
+    itemFormIndex: -1,
+    itemFormDraft: null,
     qrOverride: '',
     travelerName: '',
     errors: [],
@@ -92,6 +96,10 @@ function itinerary() {
     landing: false,
     loading: false,
     tripMissing: false,
+    // Admin trip index (shown at /?admin=1 with no id)
+    tripList: [],
+    tripListLoading: false,
+    tripListError: '',
     // Ideas rail
     locks: [],
     showIdeas: false,
@@ -126,14 +134,10 @@ function itinerary() {
       if (this.tripId) {
         this.fetchTrip(this.tripId);
       } else if (this.isAdmin) {
-        // Admin mode with no id: show import panel, hydrate last-pasted CSV
-        const saved = localStorage.getItem(`${this.storagePrefix}:csv`);
-        if (saved) {
-          this.rawCsv = saved;
-          this.parseCsv({ silent: true });
-        } else {
-          this.showImport = true;
-        }
+        // Admin mode with no id: show the trip index (list of all trips).
+        // The legacy import-without-id flow is gone — every trip lives in
+        // its own CSV file, so admins always pick a trip first.
+        this.fetchTripList();
       } else {
         // No id, not admin — branded landing
         this.landing = true;
@@ -187,6 +191,55 @@ function itinerary() {
         this.errors.push(`Could not load itinerary "${id}". ${err.message || ''}`.trim());
       } finally {
         this.loading = false;
+      }
+    },
+
+    /**
+     * Load trips/index.json — the manifest of all client trips. Powers the
+     * admin home view at /?admin=1 (no trip id). Quietly degrades to an
+     * empty list if the manifest is missing or malformed.
+     */
+    async fetchTripList() {
+      this.tripListLoading = true;
+      this.tripListError = '';
+      try {
+        const res = await fetch('trips/index.json', { cache: 'no-cache' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const list = await res.json();
+        if (!Array.isArray(list)) throw new Error('Manifest is not an array');
+        // Already sorted server-side, but enforce: newest year first, then createdAt.
+        list.sort((a, b) => (b.year || 0) - (a.year || 0)
+                          || String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+        this.tripList = list;
+      } catch (err) {
+        this.tripListError = `Couldn't load trips/index.json. ${err.message || ''}`.trim();
+      } finally {
+        this.tripListLoading = false;
+      }
+    },
+
+    tripUrl(slug, { admin = false } = {}) {
+      const base = `${location.origin}/?id=${encodeURIComponent(slug)}`;
+      return admin ? `${base}&admin=1` : base;
+    },
+
+    copyClientLink(slug, ev) {
+      const url = this.tripUrl(slug);
+      const done = () => {
+        this.flash('Client link copied');
+        if (ev && ev.currentTarget) {
+          const btn = ev.currentTarget;
+          const orig = btn.textContent;
+          btn.textContent = 'Copied!';
+          setTimeout(() => { btn.textContent = orig; }, 1200);
+        }
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(done).catch(() => {
+          window.prompt('Copy this link:', url);
+        });
+      } else {
+        window.prompt('Copy this link:', url);
       }
     },
 
@@ -252,6 +305,111 @@ function itinerary() {
 
     newRowId() {
       return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    },
+    emptyItemDraft() {
+      return {
+        Date: '',
+        WakeUp: '',
+        Sleep: '',
+        Type: 'Fixed',
+        Category: 'Activity',
+        TimeSlot: '',
+        Title: '',
+        Location: '',
+        MapLink: '',
+        Details: '',
+        ConfNo: '',
+        Cost: '',
+        TicketLink: '',
+        City: '',
+        Tags: '',
+      };
+    },
+    itemTemplates() {
+      return [
+        { label: 'Hotel', category: 'Hotel', type: 'Fixed', tags: 'lodging' },
+        { label: 'Flight', category: 'Flight', type: 'Fixed', tags: 'transit' },
+        { label: 'Train', category: 'Train', type: 'Fixed', tags: 'transit' },
+        { label: 'Car', category: 'Driving', type: 'Fixed', tags: 'driving' },
+        { label: 'Dining', category: 'Food', type: 'Fixed', tags: 'food|reservation' },
+        { label: 'Activity', category: 'Activity', type: 'Fixed', tags: 'activity' },
+        { label: 'Flexible idea', category: 'Activity', type: 'Bank', tags: 'idea' },
+      ];
+    },
+    applyItemTemplate(tpl) {
+      if (!this.itemFormDraft || !tpl) return;
+      this.itemFormDraft.Type = tpl.type;
+      this.itemFormDraft.Category = tpl.category;
+      if (!this.itemFormDraft.Tags) this.itemFormDraft.Tags = tpl.tags || '';
+      if (tpl.type === 'Bank') {
+        this.itemFormDraft.Date = '';
+        this.itemFormDraft.TimeSlot = '';
+        this.itemFormDraft.ConfNo = '';
+      }
+    },
+    openNewItemForm(tpl = null) {
+      this.itemFormMode = 'new';
+      this.itemFormIndex = -1;
+      this.itemFormDraft = this.emptyItemDraft();
+      this.itemFormOpen = true;
+      if (tpl) this.applyItemTemplate(tpl);
+    },
+    openEditItemForm(rowId) {
+      const idx = this.rows.findIndex(r => r._rowId === rowId);
+      if (idx < 0) return;
+      const src = this.rows[idx];
+      const draft = {};
+      this.csvHeaders().forEach(h => { draft[h] = src[h] || ''; });
+      this.itemFormMode = 'edit';
+      this.itemFormIndex = idx;
+      this.itemFormDraft = draft;
+      this.itemFormOpen = true;
+    },
+    closeItemForm() {
+      this.itemFormOpen = false;
+      this.itemFormMode = 'new';
+      this.itemFormIndex = -1;
+      this.itemFormDraft = null;
+    },
+    saveItemForm() {
+      if (!this.itemFormDraft) return;
+      const draft = { ...this.itemFormDraft };
+      if ((draft.Type || '').toLowerCase() === 'bank') {
+        draft.Date = '';
+        draft.TimeSlot = '';
+      }
+      if (!draft.Title.trim()) {
+        this.flash('Add a title first');
+        return;
+      }
+      if ((draft.Type || '').toLowerCase() !== 'bank' && !draft.Date.trim()) {
+        this.flash('Add a date for fixed items');
+        return;
+      }
+      if (draft.Date && !this.isValidDate(draft.Date)) {
+        this.flash('Use YYYY-MM-DD or MM/DD/YYYY');
+        return;
+      }
+      const normalized = this.normalizeRow(draft);
+      if (this.itemFormMode === 'edit' && this.itemFormIndex >= 0) {
+        normalized._rowId = this.rows[this.itemFormIndex]._rowId || normalized._rowId;
+        this.rows.splice(this.itemFormIndex, 1, normalized);
+        this.flash('Item updated');
+      } else {
+        this.rows.push(normalized);
+        this.flash('Item added');
+      }
+      this.syncRawCsvFromRows();
+      this.closeItemForm();
+      this.$nextTick(() => this.setupScrollSpy());
+    },
+    deleteItemFromForm() {
+      if (this.itemFormMode !== 'edit' || this.itemFormIndex < 0) return;
+      if (!confirm('Delete this itinerary item?')) return;
+      this.rows.splice(this.itemFormIndex, 1);
+      this.syncRawCsvFromRows();
+      this.flash('Item deleted');
+      this.closeItemForm();
     },
 
     normalizeRow(row) {
