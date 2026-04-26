@@ -14,7 +14,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="app.js?v=15"></script>
+  <script src="app.js?v=16"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body x-data="itinerary()" x-cloak :class="{'ideas-mode': showIdeas}">
@@ -402,9 +402,9 @@
               </a>
             </template>
           </div>
-          <div class="important-link-empty no-print" x-show="isAdmin && !importantLinks.length">
-            <span>No important links yet.</span>
-            <button class="chip" @click="openNewItemForm(itemTemplates().find(t => t.label === 'Important link'))">+ Add important link</button>
+          <div class="important-link-empty no-print" x-show="isAdmin">
+            <span x-show="!importantLinks.length">No important links yet.</span>
+            <button class="chip" @click="openImportantLinkForm()">+ Add important link</button>
           </div>
         </section>
 

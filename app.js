@@ -355,6 +355,13 @@ function itinerary() {
       this.itemFormOpen = true;
       if (tpl) this.applyItemTemplate(tpl);
     },
+    openImportantLinkForm() {
+      const tpl = this.itemTemplates().find(t => t.label === 'Important link');
+      this.openNewItemForm(tpl);
+      this.$nextTick(() => {
+        document.querySelector('.item-form-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    },
     openEditItemForm(rowId) {
       const idx = this.rows.findIndex(r => r._rowId === rowId);
       if (idx < 0) return;
