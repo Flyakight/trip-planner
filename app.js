@@ -133,6 +133,7 @@ function itinerary() {
       });
 
       if (this.tripId) {
+        this.setDocumentTitle(this.tripDisplayName(this.tripId));
         this.fetchTrip(this.tripId);
       } else if (this.isAdmin) {
         // Admin mode with no id: show the trip index (list of all trips).
@@ -182,6 +183,7 @@ function itinerary() {
         if (!text.trim()) throw new Error('Empty CSV');
         this.rawCsv = text;
         this.parseCsv({ silent: true, persist: false });
+        this.setDocumentTitle(this.tripDisplayName(id));
         // After CSV is loaded, sync locks from cloud (KV via Pages Function)
         await this.fetchLocks(id);
       } catch (err) {
@@ -231,6 +233,22 @@ function itinerary() {
     tripUrl(slug, { admin = false } = {}) {
       const base = `${location.origin}/?id=${encodeURIComponent(slug)}`;
       return admin ? `${base}&admin=1` : base;
+    },
+    tripDisplayName(slug) {
+      const match = this.tripList.find(t => t.slug === slug);
+      if (match?.name) return match.name;
+      return (slug || 'Itinerary')
+        .replace(/-[a-z0-9]{4}$/i, '')
+        .replace(/-/g, ' ')
+        .replace(/\b\w/g, c => c.toUpperCase());
+    },
+    setDocumentTitle(name) {
+      const clean = (name || '').trim() || 'Itinerary';
+      document.title = `${clean} — ThereandBack.Club`;
+      const ogTitle = document.querySelector('meta[property="og:title"]');
+      const ogDescription = document.querySelector('meta[property="og:description"]');
+      if (ogTitle) ogTitle.setAttribute('content', `${clean} — ThereandBack.Club`);
+      if (ogDescription) ogDescription.setAttribute('content', `Live itinerary for ${clean}.`);
     },
 
     copyClientLink(slug, ev) {
