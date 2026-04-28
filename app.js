@@ -920,6 +920,13 @@ function itinerary() {
           { label: 'Greece coast guard', value: '108' },
         );
       }
+      if (/canada|montreal|montréal|quebec|québec/.test(hay)) {
+        resources.push(
+          { label: 'Canada emergency', value: '911' },
+          { label: 'US Consulate Montreal', value: '+1 514 398 9695' },
+          { label: 'US Consulate after-hours', value: '+1 514 981 5059' },
+        );
+      }
       if (/italy|rome|florence|venice|venezia|corfu|firenze/.test(hay) && !/albania|berat|dhërmi|dhermi|gjirokast|sarande|sarandë/.test(hay)) {
         resources.push(
           { label: 'Italy emergency', value: '112' },
