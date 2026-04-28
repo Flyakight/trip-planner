@@ -902,6 +902,7 @@ function itinerary() {
         .map(r => `${r.City || ''} ${r.Location || ''} ${r.Title || ''} ${r.Details || ''}`)
         .join(' ')
         .toLowerCase();
+      const tripKey = (this.tripId || '').toLowerCase();
       const resources = [];
       if (/albania|berat|dhërmi|dhermi|gjirokast|tirana|sarande|sarandë/.test(hay)) {
         resources.push(
@@ -920,7 +921,7 @@ function itinerary() {
           { label: 'Greece coast guard', value: '108' },
         );
       }
-      if (/canada|montreal|montréal|quebec|québec/.test(hay)) {
+      if (/canada|montreal|montréal|quebec|québec/.test(`${hay} ${tripKey}`)) {
         resources.push(
           { label: 'Canada emergency', value: '911' },
           { label: 'US Consulate Montreal', value: '+1 514 398 9695' },
