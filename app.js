@@ -879,6 +879,38 @@ function itinerary() {
     get currentDay() {
       return this.days[this.currentDayIdx] || null;
     },
+    get travelResources() {
+      const hay = this.rows
+        .map(r => `${r.City || ''} ${r.Location || ''} ${r.Title || ''} ${r.Details || ''}`)
+        .join(' ')
+        .toLowerCase();
+      const resources = [];
+      if (/albania|berat|dhërmi|dhermi|gjirokast|tirana|sarande|sarandë/.test(hay)) {
+        resources.push(
+          { label: 'Albania emergency', value: '112' },
+          { label: 'Albania police', value: '129' },
+          { label: 'Albania ambulance', value: '127' },
+          { label: 'Albania fire', value: '128' },
+        );
+      }
+      if (/greece|corfu|glyfada|pelekas/.test(hay)) {
+        resources.push(
+          { label: 'Greece / Corfu emergency', value: '112' },
+          { label: 'Greece police', value: '100' },
+          { label: 'Greece ambulance', value: '166' },
+          { label: 'Greece fire', value: '199' },
+          { label: 'Greece coast guard', value: '108' },
+        );
+      }
+      if (/italy|rome|florence|venice|venezia|corfu|firenze/.test(hay) && !/albania|berat|dhërmi|dhermi|gjirokast|sarande|sarandë/.test(hay)) {
+        resources.push(
+          { label: 'Italy emergency', value: '112' },
+          { label: 'US Embassy Rome', value: '+39 06 46741' },
+          { label: 'US Consulate Florence', value: '+39 055 266 951' },
+        );
+      }
+      return resources.length ? resources : [{ label: 'Emergency', value: '112' }];
+    },
 
     /* ---------- Actions ---------- */
     openUrl(url) {

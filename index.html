@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#FAF7F2" />
   <title>Italy 2026 — Itinerary</title>
+  <link rel="icon" type="image/png" href="assets/thereandback-logo.png">
+  <link rel="apple-touch-icon" href="assets/thereandback-logo.png">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -411,10 +413,10 @@
         <div class="resources">
           <div>
             <h3>Resources</h3>
-            <div style="font-size:0.95rem;">
-              <div><strong>Italy emergency:</strong> 112</div>
-              <div><strong>US Embassy Rome:</strong> +39 06 46741</div>
-              <div><strong>US Consulate Florence:</strong> +39 055 266 951</div>
+            <div class="resource-list">
+              <template x-for="resource in travelResources" :key="resource.label">
+                <div><strong x-text="resource.label + ':'"></strong> <span x-text="resource.value"></span></div>
+              </template>
             </div>
           </div>
           <div class="qr-wrap">

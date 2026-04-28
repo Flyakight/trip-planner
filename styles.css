@@ -694,6 +694,9 @@ a:hover { color: #2A4A2B; }
   text-transform: uppercase;
   margin: 0 0 0.4rem;
 }
+.resource-list {
+  font-size: 0.95rem;
+}
 .qr-wrap {
   text-align: center;
   font-size: 0.7rem;
