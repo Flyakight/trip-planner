@@ -18,11 +18,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Caprasimo&family=EB+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="styles.css?v=14">
+  <link rel="stylesheet" href="styles.css?v=15">
 
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="app.js?v=17"></script>
+  <script src="app.js?v=18"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body x-data="itinerary()" x-cloak :class="{'ideas-mode': showIdeas}">
@@ -665,12 +665,30 @@
 
   <div class="brand-mark no-print">ThereandBack.Club</div>
 
-  <!-- Peek bar: always-visible wake-up / transit / sleep for the current day -->
-  <aside class="peek-bar no-print" x-show="rows.length && currentDay" :class="{open: peekOpen}">
+  <!-- Peek bar: always-visible wake-up / transit / sleep, anchored to TODAY
+       in the trip's local timezone (not the day the user has scrolled to).
+       Pre-trip / post-trip get their own copy so the bar is never lying. -->
+  <aside class="peek-bar no-print" x-show="rows.length && days.length" :class="{open: peekOpen}">
     <button class="peek-compact" @click="togglePeek()" :aria-expanded="peekOpen">
       <svg class="peek-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
-      <span class="peek-lbl">Tonight</span>
-      <strong class="peek-val" x-text="currentDay?.sleep || '—'"></strong>
+      <template x-if="tripStatus === 'during' && todayDay">
+        <span class="peek-inline">
+          <span class="peek-lbl">Tonight</span>
+          <strong class="peek-val" x-text="todayDay.sleep || '—'"></strong>
+        </span>
+      </template>
+      <template x-if="tripStatus === 'before'">
+        <span class="peek-inline">
+          <span class="peek-lbl">Trip starts in</span>
+          <strong class="peek-val" x-text="daysUntilTrip + (daysUntilTrip === 1 ? ' day' : ' days')"></strong>
+        </span>
+      </template>
+      <template x-if="tripStatus === 'after'">
+        <span class="peek-inline">
+          <span class="peek-lbl">Trip complete</span>
+          <strong class="peek-val">Welcome home</strong>
+        </span>
+      </template>
       <span class="peek-more">
         <span class="peek-more-lbl" x-text="peekOpen ? 'Hide' : 'Details'"></span>
         <span class="peek-caret" :class="{flipped: peekOpen}" aria-hidden="true">
@@ -679,18 +697,42 @@
       </span>
     </button>
     <div class="peek-expanded" x-show="peekOpen" x-transition.opacity>
-      <div class="peek-row">
-        <span class="peek-cap">Where you'll wake up</span>
-        <strong x-text="currentDay?.wakeUp || '—'"></strong>
-      </div>
-      <div class="peek-row">
-        <span class="peek-cap">Today</span>
-        <strong x-text="currentDay?.transitLabel"></strong>
-      </div>
-      <div class="peek-row">
-        <span class="peek-cap">Where you'll sleep</span>
-        <strong x-text="currentDay?.sleep || '—'"></strong>
-      </div>
+      <template x-if="tripStatus === 'during' && todayDay">
+        <div>
+          <div class="peek-row">
+            <span class="peek-cap">Where you'll wake up</span>
+            <strong x-text="todayDay.wakeUp || '—'"></strong>
+          </div>
+          <div class="peek-row">
+            <span class="peek-cap">Today</span>
+            <strong x-text="todayDay.transitLabel"></strong>
+          </div>
+          <div class="peek-row">
+            <span class="peek-cap">Where you'll sleep</span>
+            <strong x-text="todayDay.sleep || '—'"></strong>
+          </div>
+        </div>
+      </template>
+      <template x-if="tripStatus === 'before'">
+        <div>
+          <div class="peek-row">
+            <span class="peek-cap">First day</span>
+            <strong x-text="days[0]?.dateLabel || ''"></strong>
+          </div>
+          <div class="peek-row">
+            <span class="peek-cap">First night at</span>
+            <strong x-text="days[0]?.sleep || '—'"></strong>
+          </div>
+        </div>
+      </template>
+      <template x-if="tripStatus === 'after'">
+        <div>
+          <div class="peek-row">
+            <span class="peek-cap">Trip ended</span>
+            <strong x-text="days[days.length-1]?.dateLabel || ''"></strong>
+          </div>
+        </div>
+      </template>
     </div>
   </aside>
 

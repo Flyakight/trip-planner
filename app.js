@@ -97,6 +97,8 @@ function itinerary() {
     landing: false,
     loading: false,
     tripMissing: false,
+    tripMeta: null, // entry from trips/index.json — { slug, name, year, createdAt, timezone? }
+    nowTick: Date.now(), // bumped every minute so tz-aware "today" stays fresh
     // Admin trip index (shown at /?admin=1 with no id)
     tripList: [],
     tripListLoading: false,
@@ -149,6 +151,11 @@ function itinerary() {
         this.renderQr();
         this.setupScrollSpy();
       });
+
+      // Tick once a minute so the tz-aware "today" rolls over without a refresh.
+      // Cheap: one Alpine re-render per minute. Stops at trip-end naturally
+      // because nothing reads nowTick once the trip is over (clamped getter).
+      this._nowTimer = setInterval(() => { this.nowTick = Date.now(); }, 60_000);
     },
 
     _hydrateLocal() {
@@ -179,11 +186,16 @@ function itinerary() {
       this.tripMissing = false;
       this.errors = [];
       try {
+        // Kick the manifest fetch in parallel — we use it for the trip's
+        // timezone (powers the tz-aware "today" peek bar). Failure is silent;
+        // the app falls back to the browser timezone.
+        const metaPromise = this.fetchTripMeta(id);
         const text = await this.fetchPublishedTripCsv(id);
         if (!text.trim()) throw new Error('Empty CSV');
         this.rawCsv = text;
         this.parseCsv({ silent: true, persist: false });
         this.setDocumentTitle(this.tripDisplayName(id));
+        await metaPromise;
         // After CSV is loaded, sync locks from cloud (KV via Pages Function)
         await this.fetchLocks(id);
       } catch (err) {
@@ -191,6 +203,19 @@ function itinerary() {
         this.errors.push(`Could not load itinerary "${id}". ${err.message || ''}`.trim());
       } finally {
         this.loading = false;
+      }
+    },
+
+    async fetchTripMeta(id) {
+      try {
+        const res = await fetch('trips/index.json', { cache: 'no-cache' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const list = await res.json();
+        if (Array.isArray(list)) {
+          this.tripMeta = list.find(t => t.slug === id) || null;
+        }
+      } catch (_) {
+        this.tripMeta = null; // silent — TZ falls back to browser local
       }
     },
     async fetchPublishedTripCsv(id) {
@@ -675,6 +700,50 @@ function itinerary() {
       }
       return s;
     },
+    _isoRangeInclusive(startIso, endIso) {
+      // Inclusive list of YYYY-MM-DD strings between two anchors.
+      // Uses UTC math to avoid DST/local-tz drift creating duplicate or
+      // skipped days at clock-shift boundaries.
+      if (!startIso || !endIso) return startIso ? [startIso] : [];
+      const out = [];
+      const [sy, sm, sd] = startIso.split('-').map(Number);
+      const [ey, em, ed] = endIso.split('-').map(Number);
+      const cur = new Date(Date.UTC(sy, sm - 1, sd));
+      const end = new Date(Date.UTC(ey, em - 1, ed));
+      // Safety cap — a 2-year trip would already be unusual.
+      let guard = 0;
+      while (cur <= end && guard++ < 800) {
+        const y = cur.getUTCFullYear();
+        const m = String(cur.getUTCMonth() + 1).padStart(2, '0');
+        const d = String(cur.getUTCDate()).padStart(2, '0');
+        out.push(`${y}-${m}-${d}`);
+        cur.setUTCDate(cur.getUTCDate() + 1);
+      }
+      return out;
+    },
+    /**
+     * Today's date as YYYY-MM-DD in the trip's local timezone.
+     * Falls back to the browser timezone when tripMeta has no `timezone`.
+     * Reads `nowTick` so Alpine re-renders this every minute.
+     */
+    todayInTripTz() {
+      void this.nowTick; // dependency for reactivity
+      const tz = this.tripMeta && this.tripMeta.timezone;
+      try {
+        // 'en-CA' formats as YYYY-MM-DD natively; safer than parsing locale strings.
+        return new Intl.DateTimeFormat('en-CA', {
+          timeZone: tz || undefined,
+          year: 'numeric', month: '2-digit', day: '2-digit',
+        }).format(new Date());
+      } catch (_) {
+        // Bad tz id — fall back to browser local.
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${dd}`;
+      }
+    },
     timeToMinutes(t) {
       if (!t) return 99999;
       const s = t.trim();
@@ -726,17 +795,27 @@ function itinerary() {
     get days() {
       if (!this.rows.length) return [];
       const dated = this.rows.filter(r => r._iso);
+      if (!dated.length) return [];
       const groups = {};
       dated.forEach(r => {
         (groups[r._iso] = groups[r._iso] || []).push(r);
       });
-      const sortedDates = Object.keys(groups).sort();
+      // Build a contiguous calendar from min→max date so multi-night stays
+      // with no fixed activities still render as their own day. Travelers
+      // can then drop ideas from the bank onto otherwise-empty days.
+      const presentIsos = Object.keys(groups).sort();
+      const sortedDates = this._isoRangeInclusive(presentIsos[0], presentIsos[presentIsos.length - 1]);
+
+      // Walk forward, inheriting WakeUp/Sleep from prior day's stay so the
+      // peek bar / footer still know "you're at Hotel X" on a quiet day.
+      let lastSleep = '';
       return sortedDates.map((iso, i) => {
-        const items = groups[iso];
+        const items = groups[iso] || [];
         const firstWithWake  = items.find(r => r.WakeUp);
         const firstWithSleep = items.find(r => r.Sleep);
-        const wakeUp = firstWithWake ? firstWithWake.WakeUp : '';
-        const sleep  = firstWithSleep ? firstWithSleep.Sleep : '';
+        const wakeUp = firstWithWake ? firstWithWake.WakeUp : lastSleep;
+        const sleep  = firstWithSleep ? firstWithSleep.Sleep : lastSleep;
+        if (sleep) lastSleep = sleep;
 
         const fixed = items
           .filter(r => (r.Type || '').toLowerCase() === 'fixed')
@@ -896,6 +975,47 @@ function itinerary() {
 
     get currentDay() {
       return this.days[this.currentDayIdx] || null;
+    },
+
+    /**
+     * The day object that matches today's real-world date in the trip's
+     * timezone. This is the source of truth for the peek bar — independent
+     * of how the user has scrolled. Null if today is outside the trip span.
+     */
+    get todayDay() {
+      const days = this.days;
+      if (!days.length) return null;
+      const today = this.todayInTripTz();
+      return days.find(d => d.iso === today) || null;
+    },
+
+    /**
+     * 'before' (trip hasn't started), 'during' (today is one of the days),
+     * or 'after' (trip is over). Used by the peek bar to switch copy.
+     */
+    get tripStatus() {
+      const days = this.days;
+      if (!days.length) return 'during'; // unknown — treat as neutral
+      const today = this.todayInTripTz();
+      if (today < days[0].iso) return 'before';
+      if (today > days[days.length - 1].iso) return 'after';
+      return 'during';
+    },
+
+    /**
+     * Whole-day count from today (trip TZ) until the trip's first day.
+     * Positive only when status is 'before'. Used for the pre-trip peek copy.
+     */
+    get daysUntilTrip() {
+      const days = this.days;
+      if (!days.length) return 0;
+      const today = this.todayInTripTz();
+      const first = days[0].iso;
+      if (today >= first) return 0;
+      const [ty, tm, td] = today.split('-').map(Number);
+      const [fy, fm, fd] = first.split('-').map(Number);
+      const ms = Date.UTC(fy, fm - 1, fd) - Date.UTC(ty, tm - 1, td);
+      return Math.round(ms / 86400000);
     },
     get travelResources() {
       const hay = this.rows

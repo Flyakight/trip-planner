@@ -1105,6 +1105,16 @@ a:hover { color: #2A4A2B; }
   cursor: pointer;
 }
 .peek-compact .peek-ico { width: 20px; height: 20px; flex: 0 0 auto; opacity: 0.9; }
+/* Inline wrapper around the label + value so the three trip-status
+   variants (during/before/after) reuse the original peek-compact layout
+   without each duplicating ico + more siblings. */
+.peek-compact .peek-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
 .peek-compact .peek-lbl {
   font-family: var(--display);
   font-weight: 400;

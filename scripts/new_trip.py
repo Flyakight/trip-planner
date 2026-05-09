@@ -99,7 +99,15 @@ def main() -> int:
                     help="Don't include the placeholder Flight row (file will be header-only)")
     ap.add_argument("--no-index", action="store_true",
                     help="Don't register the trip in trips/index.json (rare — for templates)")
+    ap.add_argument("--timezone", default=None,
+                    help='IANA timezone for the destination, e.g. "Europe/Tirane". '
+                         'Used by the app to compute "today" in local trip time. '
+                         'Falls back to the browser timezone if omitted.')
     args = ap.parse_args()
+
+    if args.timezone and "/" not in args.timezone:
+        print(f'warning: "{args.timezone}" does not look like an IANA tz id '
+              f'(expected "Region/City")', file=sys.stderr)
 
     slug_base = slugify(args.name)
     if not slug_base:
@@ -129,12 +137,15 @@ def main() -> int:
         entries = load_index()
         # Avoid duplicate slugs
         entries = [e for e in entries if e.get("slug") != slug]
-        entries.append({
+        entry = {
             "slug": slug,
             "name": args.display or args.name,
             "year": args.year,
             "createdAt": datetime.now().strftime("%Y-%m-%d"),
-        })
+        }
+        if args.timezone:
+            entry["timezone"] = args.timezone
+        entries.append(entry)
         save_index(entries)
 
     print(f"\n✓ Created trips/{out.name}")
