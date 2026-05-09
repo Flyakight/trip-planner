@@ -1,4 +1,5 @@
-const VERSION = '2026-05-09-v6';
+const VERSION = '2026-05-09-v7';
+const TRIP_DATA_VERSION = '2026-05-09-v2';
 const STATIC_CACHE = `tab-static-${VERSION}`;
 const RUNTIME_CACHE = `tab-runtime-${VERSION}`;
 const TRIP_CACHE = `tab-trips-${VERSION}`;
@@ -7,7 +8,7 @@ const SHELL_URLS = [
   '/',
   '/index.html',
   '/styles.css?v=18',
-  '/app.js?v=23',
+  '/app.js?v=24',
   '/manifest.webmanifest',
   '/favicon.png',
   '/assets/thereandback-logo.png',
@@ -46,9 +47,9 @@ self.addEventListener('message', event => {
       const encoded = encodeURIComponent(tripId);
       const urls = [
         ...SHELL_URLS,
-        `/api/trips/${encoded}`,
-        `/trips/${encoded}.csv`,
-        '/trips/index.json',
+        `/api/trips/${encoded}?v=${TRIP_DATA_VERSION}`,
+        `/trips/${encoded}.csv?v=${TRIP_DATA_VERSION}`,
+        `/trips/index.json?v=${TRIP_DATA_VERSION}`,
         event.data.url || '/'
       ];
       const count = await cacheEach(TRIP_CACHE, urls);

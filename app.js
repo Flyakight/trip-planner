@@ -5,6 +5,7 @@ const REQUIRED_HEADERS = [
   'Title','Location','MapLink','Details','ConfNo','Cost','TicketLink'
 ];
 const OPTIONAL_HEADERS = ['City','Tags','PaidStatus'];
+const TRIP_DATA_VERSION = '2026-05-09-v2';
 
 // Payment status — shown as a color-coded chip on reservation cards.
 // Empty string = no info displayed (default for new rows + legacy CSVs).
@@ -291,7 +292,7 @@ function itinerary() {
 
     async fetchTripMeta(id) {
       try {
-        const res = await fetch('trips/index.json', { cache: 'no-cache' });
+        const res = await fetch(`trips/index.json?v=${TRIP_DATA_VERSION}`, { cache: 'no-cache' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const list = await res.json();
         if (Array.isArray(list)) {
@@ -304,12 +305,12 @@ function itinerary() {
     async fetchPublishedTripCsv(id) {
       const encoded = encodeURIComponent(id);
       try {
-        const published = await fetch(`/api/trips/${encoded}`, { cache: 'no-store' });
+        const published = await fetch(`/api/trips/${encoded}?v=${TRIP_DATA_VERSION}`, { cache: 'no-store' });
         if (published.ok) return published.text();
       } catch (_) {
         // Static CSV fallback below keeps the app usable without Functions/KV.
       }
-      const res = await fetch(`trips/${encoded}.csv`, { cache: 'no-cache' });
+      const res = await fetch(`trips/${encoded}.csv?v=${TRIP_DATA_VERSION}`, { cache: 'no-cache' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.text();
     },
@@ -323,7 +324,7 @@ function itinerary() {
       this.tripListLoading = true;
       this.tripListError = '';
       try {
-        const res = await fetch('trips/index.json', { cache: 'no-cache' });
+        const res = await fetch(`trips/index.json?v=${TRIP_DATA_VERSION}`, { cache: 'no-cache' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const list = await res.json();
         if (!Array.isArray(list)) throw new Error('Manifest is not an array');
