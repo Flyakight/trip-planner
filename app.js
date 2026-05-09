@@ -4,7 +4,16 @@ const REQUIRED_HEADERS = [
   'Date','WakeUp','Sleep','Type','Category','TimeSlot',
   'Title','Location','MapLink','Details','ConfNo','Cost','TicketLink'
 ];
-const OPTIONAL_HEADERS = ['City','Tags'];
+const OPTIONAL_HEADERS = ['City','Tags','PaidStatus'];
+
+// Payment status — shown as a color-coded chip on reservation cards.
+// Empty string = no info displayed (default for new rows + legacy CSVs).
+const PAID_STATUSES = [
+  { value: '',                key: '',     label: '— not set —'      },
+  { value: 'Paid in full',    key: 'full', label: 'Paid in full'     },
+  { value: 'Paid in part',    key: 'part', label: 'Paid in part'     },
+  { value: 'Pay at check-out',key: 'later',label: 'Pay at check-out' },
+];
 
 function slugify(s) {
   return (s || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -376,7 +385,16 @@ function itinerary() {
         TicketLink: '',
         City: '',
         Tags: '',
+        PaidStatus: '',
       };
+    },
+    paidStatusOptions() { return PAID_STATUSES; },
+    /** PAID_STATUSES minus the empty/blank entry — for selects that
+     *  render a hardcoded `<option value="">` first. */
+    paidStatusValueOptions() { return PAID_STATUSES.filter(p => p.value); },
+    paidKey(status) {
+      const found = PAID_STATUSES.find(p => p.value === (status || ''));
+      return found ? found.key : '';
     },
     itemTemplates() {
       return [

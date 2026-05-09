@@ -48,7 +48,7 @@ from pathlib import Path
 COLUMNS = [
     "Date", "WakeUp", "Sleep", "Type", "Category", "TimeSlot", "Title",
     "Location", "MapLink", "Details", "ConfNo", "Cost", "TicketLink",
-    "City", "Tags",
+    "City", "Tags", "PaidStatus",
 ]
 
 KML_NS = {"kml": "http://www.opengis.net/kml/2.2"}

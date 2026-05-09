@@ -975,6 +975,25 @@ a:hover { color: #2A4A2B; }
 .chip-cost { border-color: var(--gold-faint); color: var(--plum-soft); background: var(--card); cursor: default; }
 .chip-cost:hover { background: var(--card); color: var(--plum-soft); border-color: var(--gold-faint); }
 
+/* Payment status chip — three color-coded variants on res-cards. */
+.chip-paid { cursor: default; font-weight: 600; letter-spacing: 0.02em; }
+.chip-paid:hover { /* purely informational — no hover lift */ }
+.chip-paid-full {
+  background: #E5F0E1;
+  border-color: #8FB497;
+  color: #2A4A2B;
+}
+.chip-paid-part {
+  background: #FBF1D9;
+  border-color: #D9B86A;
+  color: #6B4F1A;
+}
+.chip-paid-later {
+  background: #F2EAEC;
+  border-color: #B89BA0;
+  color: #5A3A40;
+}
+
 /* Bank / Suggested activities — visually distinct cream section */
 .bank-section {
   background: var(--cream-3);

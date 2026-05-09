@@ -26,7 +26,7 @@ from pathlib import Path
 COLUMNS = [
     "Date", "WakeUp", "Sleep", "Type", "Category", "TimeSlot", "Title",
     "Location", "MapLink", "Details", "ConfNo", "Cost", "TicketLink",
-    "City", "Tags",
+    "City", "Tags", "PaidStatus",
 ]
 
 REPO_ROOT = Path(__file__).resolve().parents[1]

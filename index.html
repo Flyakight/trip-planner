@@ -18,11 +18,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Caprasimo&family=EB+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="styles.css?v=15">
+  <link rel="stylesheet" href="styles.css?v=16">
 
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="app.js?v=18"></script>
+  <script src="app.js?v=19"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body x-data="itinerary()" x-cloak :class="{'ideas-mode': showIdeas}">
@@ -256,6 +256,15 @@
               <input type="text" x-model="itemFormDraft.Cost" placeholder="$ / €">
             </label>
             <label>
+              <span>Payment</span>
+              <select x-model="itemFormDraft.PaidStatus">
+                <option value="">— not set —</option>
+                <template x-for="opt in paidStatusValueOptions()" :key="opt.value">
+                  <option :value="opt.value" x-text="opt.label"></option>
+                </template>
+              </select>
+            </label>
+            <label>
               <span>City</span>
               <input type="text" x-model="itemFormDraft.City" placeholder="Rome">
             </label>
@@ -321,6 +330,7 @@
               <th>TicketLink</th>
               <th>City</th>
               <th>Tags</th>
+              <th>Payment</th>
               <th></th>
             </tr>
           </thead>
@@ -347,6 +357,14 @@
                 <td><input x-model="row.TicketLink" @change="touchRow(idx)" placeholder="https://..."></td>
                 <td><input x-model="row.City" @change="touchRow(idx)" placeholder="City"></td>
                 <td><input x-model="row.Tags" @change="touchRow(idx)" placeholder="tag1|tag2"></td>
+                <td>
+                  <select x-model="row.PaidStatus" @change="touchRow(idx)">
+                    <option value="">—</option>
+                    <template x-for="opt in paidStatusValueOptions()" :key="opt.value">
+                      <option :value="opt.value" x-text="opt.label"></option>
+                    </template>
+                  </select>
+                </td>
                 <td><button class="chip chip-remove" @click="removeRow(idx)" title="Delete row">Delete</button></td>
               </tr>
             </template>
@@ -393,6 +411,10 @@
                         x-text="r.ConfNo"
                         :title="'Copy ' + r.ConfNo"></button>
                 <span class="chip chip-cost" x-show="r.Cost" x-text="r.Cost"></span>
+                <span class="chip chip-paid"
+                      :class="'chip-paid-' + paidKey(r.PaidStatus)"
+                      x-show="r.PaidStatus"
+                      x-text="r.PaidStatus"></span>
                 <a class="chip" x-show="r.TicketLink" :href="r.TicketLink" target="_blank" rel="noopener">View booking</a>
                 <button class="chip no-print" x-show="isAdmin" @click="openEditItemForm(r._rowId)">Edit</button>
               </div>
