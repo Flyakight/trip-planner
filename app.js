@@ -182,9 +182,26 @@ function itinerary() {
     async registerServiceWorker() {
       if (!('serviceWorker' in navigator)) return;
       try {
+        let reloadingForWorkerUpdate = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (reloadingForWorkerUpdate) return;
+          reloadingForWorkerUpdate = true;
+          window.location.reload();
+        });
         const reg = await navigator.serviceWorker.register('/sw.js');
         this.offlineReady = true;
+        const activate = worker => {
+          if (worker) worker.postMessage({ type: 'SKIP_WAITING' });
+        };
         if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        reg.addEventListener('updatefound', () => {
+          const worker = reg.installing;
+          if (!worker) return;
+          worker.addEventListener('statechange', () => {
+            if (worker.state === 'installed' && navigator.serviceWorker.controller) activate(worker);
+          });
+        });
+        reg.update().catch(() => {});
       } catch (_) {
         this.offlineReady = false;
       }
