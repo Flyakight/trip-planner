@@ -397,6 +397,17 @@
           <span x-text="dateRange"></span>
         </div>
 
+        <section class="offline-panel no-print" x-show="tripId">
+          <div>
+            <div class="offline-title">Offline copy</div>
+            <div class="offline-note" x-text="offlineSavedAt ? ('Saved ' + offlineSavedAt) : 'Save this trip before travel.'"></div>
+          </div>
+          <button class="btn secondary"
+                  @click="saveForOffline()"
+                  :disabled="offlineSaving"
+                  x-text="offlineSaving ? 'Saving…' : (offlineSavedAt ? 'Refresh offline' : 'Save offline')"></button>
+        </section>
+
         <div class="cover-section-title">Trip Overview &amp; Reservation Nos.</div>
 
         <div class="reservation-grid">
@@ -458,16 +469,6 @@
           </div>
         </div>
 
-        <section class="offline-panel no-print" x-show="tripId">
-          <div>
-            <div class="offline-title">Offline copy</div>
-            <div class="offline-note" x-text="offlineSavedAt ? ('Saved ' + offlineSavedAt) : 'Save this trip before travel.'"></div>
-          </div>
-          <button class="btn secondary"
-                  @click="saveForOffline()"
-                  :disabled="offlineSaving"
-                  x-text="offlineSaving ? 'Saving…' : (offlineSavedAt ? 'Refresh offline' : 'Save offline')"></button>
-        </section>
       </div>
     </template>
 
