@@ -5,7 +5,7 @@ const REQUIRED_HEADERS = [
   'Title','Location','MapLink','Details','ConfNo','Cost','TicketLink'
 ];
 const OPTIONAL_HEADERS = ['City','Tags','PaidStatus'];
-const TRIP_DATA_VERSION = '2026-05-09-v2';
+const TRIP_DATA_VERSION = '2026-05-09-v3';
 
 // Payment status — shown as a color-coded chip on reservation cards.
 // Empty string = no info displayed (default for new rows + legacy CSVs).
