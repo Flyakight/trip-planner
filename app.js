@@ -5,7 +5,7 @@ const REQUIRED_HEADERS = [
   'Title','Location','MapLink','Details','ConfNo','Cost','TicketLink'
 ];
 const OPTIONAL_HEADERS = ['City','Tags','PaidStatus'];
-const TRIP_DATA_VERSION = '2026-05-09-v4';
+const TRIP_DATA_VERSION = '2026-05-09-v5';
 
 // Payment status — shown as a color-coded chip on reservation cards.
 // Empty string = no info displayed (default for new rows + legacy CSVs).
@@ -181,6 +181,7 @@ function itinerary() {
     },
 
     async registerServiceWorker() {
+      if (window.TAB_DISABLE_SW) return;
       if (!('serviceWorker' in navigator)) return;
       try {
         let reloadingForWorkerUpdate = false;
@@ -603,7 +604,7 @@ function itinerary() {
         return out;
       });
       const csv = records.length
-        ? Papa.unparse(records, { columns: this.csvHeaders() })
+        ? Papa.unparse(records, { columns: this.csvHeaders(), newline: '\n' })
         : this.csvHeaders().join(',');
       this.rawCsv = csv;
       if (persist && this.isAdmin) {
@@ -706,13 +707,20 @@ function itinerary() {
     /* ---------- CSV handling ---------- */
     parseCsv({ silent = false, persist = true } = {}) {
       this.errors = [];
-      const text = (this.rawCsv || '').trim();
+      // Mixed line endings (CRLF + LF in the same file — usually from
+      // alternating Excel + plaintext edits) make PapaParse mis-detect
+      // the row terminator and slurp multiple rows into one quoted
+      // field. Normalize to LF before parsing — this is the single
+      // most defensive thing we can do for hand-edited CSVs.
+      const text = (this.rawCsv || '').replace(/\r\n?/g, '\n').trim();
       if (!text) {
         this.rows = [];
         if (!silent) this.flash('Paste a CSV first');
         return;
       }
-      const result = Papa.parse(text, { header: true, skipEmptyLines: true });
+      // Pin newline=\n explicitly to avoid PapaParse's auto-detection
+      // ever guessing wrong on the next round of mixed input.
+      const result = Papa.parse(text, { header: true, skipEmptyLines: true, newline: '\n' });
       const headers = result.meta.fields || [];
       const missing = REQUIRED_HEADERS.filter(h => !headers.includes(h));
       if (missing.length) {
