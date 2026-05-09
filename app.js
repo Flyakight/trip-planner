@@ -112,6 +112,9 @@ function itinerary() {
     tripList: [],
     tripListLoading: false,
     tripListError: '',
+    offlineReady: false,
+    offlineSaving: false,
+    offlineSavedAt: '',
     // Ideas rail
     locks: [],
     showIdeas: false,
@@ -161,6 +164,8 @@ function itinerary() {
         this.setupScrollSpy();
       });
 
+      this.registerServiceWorker();
+
       // Tick once a minute so the tz-aware "today" rolls over without a refresh.
       // Cheap: one Alpine re-render per minute. Stops at trip-end naturally
       // because nothing reads nowTick once the trip is over (clamped getter).
@@ -171,10 +176,68 @@ function itinerary() {
       const name  = localStorage.getItem(`${this.storagePrefix}:name`);
       const locks = localStorage.getItem(`${this.storagePrefix}:locks`);
       const qrurl = localStorage.getItem(`${this.storagePrefix}:qrurl`);
+      const offlineSavedAt = localStorage.getItem(`${this.storagePrefix}:offlineSavedAt`);
       if (name) this.travelerName = name;
       if (qrurl) this.qrOverride = qrurl;
+      if (offlineSavedAt) this.offlineSavedAt = offlineSavedAt;
       if (locks) {
         try { this.locks = JSON.parse(locks) || []; } catch (_) { this.locks = []; }
+      }
+    },
+
+    async registerServiceWorker() {
+      if (!('serviceWorker' in navigator)) return;
+      try {
+        const reg = await navigator.serviceWorker.register('/sw.js');
+        this.offlineReady = true;
+        if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+      } catch (_) {
+        this.offlineReady = false;
+      }
+    },
+
+    async saveForOffline() {
+      if (!this.tripId) return;
+      this.offlineSaving = true;
+      try {
+        if (!('serviceWorker' in navigator)) throw new Error('Offline saving is not supported in this browser.');
+        const reg = await navigator.serviceWorker.ready;
+        const worker = reg.active || reg.waiting || reg.installing;
+        if (!worker) throw new Error('Offline worker is not ready yet.');
+        const saved = await new Promise((resolve, reject) => {
+          const channel = new MessageChannel();
+          const timer = setTimeout(() => reject(new Error('Offline save timed out.')), 15000);
+          channel.port1.onmessage = ev => {
+            clearTimeout(timer);
+            if (ev.data && ev.data.ok) resolve(ev.data);
+            else reject(new Error(ev.data?.error || 'Offline save failed.'));
+          };
+          worker.postMessage({
+            type: 'SAVE_TRIP',
+            tripId: this.tripId,
+            url: location.href,
+          }, [channel.port2]);
+        });
+        this.offlineSavedAt = this.formatOfflineSavedAt(new Date());
+        localStorage.setItem(`${this.storagePrefix}:offlineSavedAt`, this.offlineSavedAt);
+        this.flash(saved?.count ? `Saved offline (${saved.count} files)` : 'Saved offline');
+      } catch (err) {
+        this.flash(err.message || 'Offline save failed');
+      } finally {
+        this.offlineSaving = false;
+      }
+    },
+
+    formatOfflineSavedAt(date) {
+      try {
+        return new Intl.DateTimeFormat(undefined, {
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+        }).format(date);
+      } catch (_) {
+        return date.toLocaleString();
       }
     },
 

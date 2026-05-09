@@ -1,0 +1,22 @@
+{
+  "name": "ThereandBack.Club Itinerary",
+  "short_name": "Itinerary",
+  "description": "A live travel itinerary from ThereandBack.Club.",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FAF7F2",
+  "theme_color": "#FAF7F2",
+  "icons": [
+    {
+      "src": "/assets/thereandback-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "64x64",
+      "type": "image/png"
+    }
+  ]
+}

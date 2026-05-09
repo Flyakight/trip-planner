@@ -5,10 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#FAF7F2" />
   <title>ThereandBack.Club — Itinerary</title>
+  <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png">
   <link rel="icon" type="image/png" href="assets/thereandback-logo.png">
   <link rel="shortcut icon" type="image/png" href="/favicon.png">
   <link rel="apple-touch-icon" href="assets/thereandback-logo.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Itinerary">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta property="og:title" content="ThereandBack.Club — Itinerary">
   <meta property="og:description" content="Your live travel itinerary from ThereandBack.Club.">
   <meta property="og:image" content="https://itinerary.thereandback.club/assets/thereandback-logo.png">
@@ -18,11 +22,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Caprasimo&family=EB+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="styles.css?v=16">
+  <link rel="stylesheet" href="styles.css?v=17">
 
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="app.js?v=19"></script>
+  <script src="app.js?v=20"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body x-data="itinerary()" x-cloak :class="{'ideas-mode': showIdeas}">
@@ -453,6 +457,17 @@
             <div style="margin-top:0.25rem; max-width:108px;">Scan to open the live itinerary — all links stay current.</div>
           </div>
         </div>
+
+        <section class="offline-panel no-print" x-show="tripId">
+          <div>
+            <div class="offline-title">Offline copy</div>
+            <div class="offline-note" x-text="offlineSavedAt ? ('Saved ' + offlineSavedAt) : 'Save this trip before travel.'"></div>
+          </div>
+          <button class="btn secondary"
+                  @click="saveForOffline()"
+                  :disabled="offlineSaving"
+                  x-text="offlineSaving ? 'Saving…' : (offlineSavedAt ? 'Refresh offline' : 'Save offline')"></button>
+        </section>
       </div>
     </template>
 

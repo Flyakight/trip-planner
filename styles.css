@@ -714,6 +714,48 @@ a:hover { color: #2A4A2B; }
   display: block;
 }
 
+.offline-panel {
+  margin-top: 1.25rem;
+  border: 1px solid var(--forest-faint);
+  background: var(--cream-3);
+  border-radius: 8px;
+  padding: 0.85rem 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.offline-title {
+  font-family: var(--display);
+  color: var(--forest);
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.offline-note {
+  margin-top: 0.12rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.25;
+}
+.offline-panel .btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+@media (max-width: 560px) {
+  .resources {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .offline-panel {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .offline-panel .btn {
+    width: 100%;
+  }
+}
+
 .brand-mark {
   position: fixed;
   bottom: 0.5rem;
