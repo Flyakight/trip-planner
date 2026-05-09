@@ -1048,9 +1048,55 @@ function itinerary() {
     },
 
     get reservations() {
-      return this.rows
-        .filter(r => (r.Type || '').toLowerCase() === 'fixed' && r.ConfNo)
-        .sort((a, b) => a._iso.localeCompare(b._iso) || a._minutes - b._minutes);
+      const fixed = this.rows.filter(r => (r.Type || '').toLowerCase() === 'fixed');
+      const hotelGroups = new Map();
+
+      fixed
+        .filter(r => this.catKey(r.Category) === 'hotel' && r.ConfNo)
+        .forEach(row => {
+          const key = row.ConfNo || row.Title || row.Location || row._rowId;
+          if (!hotelGroups.has(key)) hotelGroups.set(key, []);
+          hotelGroups.get(key).push(row);
+        });
+
+      const hotelStays = [...hotelGroups.values()].map(group => {
+        const sorted = [...group].sort((a, b) => a._iso.localeCompare(b._iso) || a._minutes - b._minutes);
+        const checkIn = sorted.find(r => /check\s*in/i.test(r.Title || '')) || sorted[0];
+        const checkOut = sorted.find(r => /check\s*out/i.test(r.Title || '')) || sorted[sorted.length - 1];
+        const start = checkIn?._iso || sorted[0]?._iso || '';
+        const end = checkOut?._iso && checkOut._iso !== start ? checkOut._iso : '';
+        return {
+          ...checkIn,
+          Title: this.cleanReservationTitle(checkIn?.Title || sorted[0]?.Title || 'Hotel'),
+          Location: checkIn?.Location || sorted[0]?.Location || '',
+          dateLabel: end ? `${this.formatDate(start)} - ${this.formatDate(end)}` : this.formatDate(start),
+          _sortIso: start,
+          _sortMinutes: checkIn?._minutes ?? sorted[0]?._minutes ?? 0,
+        };
+      });
+
+      const bookedActivities = fixed
+        .filter(r => {
+          const cat = this.catKey(r.Category);
+          if (cat === 'hotel' || cat === 'train' || cat === 'transit' || cat === 'driving') return false;
+          return Boolean(r.ConfNo || r.Cost || r.TicketLink);
+        })
+        .map(r => ({
+          ...r,
+          _sortIso: r._iso,
+          _sortMinutes: r._minutes,
+        }));
+
+      return [...hotelStays, ...bookedActivities]
+        .sort((a, b) => (a._sortIso || '').localeCompare(b._sortIso || '') || (a._sortMinutes || 0) - (b._sortMinutes || 0));
+    },
+
+    cleanReservationTitle(title) {
+      return (title || '')
+        .replace(/^check\s*in\s*:?\s*/i, '')
+        .replace(/^check\s*out\s*:?\s*/i, '')
+        .replace(/^\s*\((.*?)\)\s*/i, '$1 ')
+        .trim();
     },
 
     get currentDay() {
