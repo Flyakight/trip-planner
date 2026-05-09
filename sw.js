@@ -1,4 +1,4 @@
-const VERSION = '2026-05-09-v3';
+const VERSION = '2026-05-09-v4';
 const STATIC_CACHE = `tab-static-${VERSION}`;
 const RUNTIME_CACHE = `tab-runtime-${VERSION}`;
 const TRIP_CACHE = `tab-trips-${VERSION}`;
@@ -70,7 +70,7 @@ self.addEventListener('fetch', event => {
   }
 
   if (isTripData(url)) {
-    event.respondWith(staleWhileRevalidate(req, TRIP_CACHE));
+    event.respondWith(networkFirst(req, TRIP_CACHE));
     return;
   }
 
