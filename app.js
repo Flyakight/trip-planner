@@ -5,7 +5,7 @@ const REQUIRED_HEADERS = [
   'Title','Location','MapLink','Details','ConfNo','Cost','TicketLink'
 ];
 const OPTIONAL_HEADERS = ['City','Tags','PaidStatus'];
-const TRIP_DATA_VERSION = '2026-05-09-v3';
+const TRIP_DATA_VERSION = '2026-05-09-v4';
 
 // Payment status — shown as a color-coded chip on reservation cards.
 // Empty string = no info displayed (default for new rows + legacy CSVs).
@@ -304,6 +304,12 @@ function itinerary() {
     },
     async fetchPublishedTripCsv(id) {
       const encoded = encodeURIComponent(id);
+      try {
+        const published = await fetch(`/api/fresh-trips/${encoded}?v=${TRIP_DATA_VERSION}`, { cache: 'no-store' });
+        if (published.ok) return published.text();
+      } catch (_) {
+        // Older deployments did not have the fresh endpoint; try the legacy one.
+      }
       try {
         const published = await fetch(`/api/trips/${encoded}?v=${TRIP_DATA_VERSION}`, { cache: 'no-store' });
         if (published.ok) return published.text();

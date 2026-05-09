@@ -1,5 +1,5 @@
-const VERSION = '2026-05-09-v8';
-const TRIP_DATA_VERSION = '2026-05-09-v3';
+const VERSION = '2026-05-09-v9';
+const TRIP_DATA_VERSION = '2026-05-09-v4';
 const STATIC_CACHE = `tab-static-${VERSION}`;
 const RUNTIME_CACHE = `tab-runtime-${VERSION}`;
 const TRIP_CACHE = `tab-trips-${VERSION}`;
@@ -8,7 +8,7 @@ const SHELL_URLS = [
   '/',
   '/index.html',
   '/styles.css?v=18',
-  '/app.js?v=25',
+  '/app.js?v=26',
   '/manifest.webmanifest',
   '/favicon.png',
   '/assets/thereandback-logo.png',
@@ -47,6 +47,7 @@ self.addEventListener('message', event => {
       const encoded = encodeURIComponent(tripId);
       const urls = [
         ...SHELL_URLS,
+        `/api/fresh-trips/${encoded}?v=${TRIP_DATA_VERSION}`,
         `/api/trips/${encoded}?v=${TRIP_DATA_VERSION}`,
         `/trips/${encoded}.csv?v=${TRIP_DATA_VERSION}`,
         `/trips/index.json?v=${TRIP_DATA_VERSION}`,
