@@ -137,10 +137,6 @@ function itinerary() {
       // Load per-trip locks + name
       this._hydrateLocal();
 
-      this.$watch('travelerName', v => {
-        if (!this.isAdmin) return;
-        localStorage.setItem(`${this.storagePrefix}:name`, v || '');
-      });
       this.$watch('qrOverride', v => {
         if (!this.isAdmin) return;
         localStorage.setItem(`${this.storagePrefix}:qrurl`, (v || '').trim());
@@ -173,11 +169,9 @@ function itinerary() {
     },
 
     _hydrateLocal() {
-      const name  = localStorage.getItem(`${this.storagePrefix}:name`);
       const locks = localStorage.getItem(`${this.storagePrefix}:locks`);
       const qrurl = localStorage.getItem(`${this.storagePrefix}:qrurl`);
       const offlineSavedAt = localStorage.getItem(`${this.storagePrefix}:offlineSavedAt`);
-      if (name) this.travelerName = name;
       if (qrurl) this.qrOverride = qrurl;
       if (offlineSavedAt) this.offlineSavedAt = offlineSavedAt;
       if (locks) {
@@ -266,8 +260,8 @@ function itinerary() {
         if (!text.trim()) throw new Error('Empty CSV');
         this.rawCsv = text;
         this.parseCsv({ silent: true, persist: false });
-        this.setDocumentTitle(this.tripDisplayName(id));
         await metaPromise;
+        this.setDocumentTitle(this.tripDisplayName(id));
         // After CSV is loaded, sync locks from cloud (KV via Pages Function)
         await this.fetchLocks(id);
       } catch (err) {
@@ -332,12 +326,17 @@ function itinerary() {
       return admin ? `${base}&admin=1` : base;
     },
     tripDisplayName(slug) {
+      if (this.tripMeta?.slug === slug && this.tripMeta.name) return this.tripMeta.name;
       const match = this.tripList.find(t => t.slug === slug);
       if (match?.name) return match.name;
       return (slug || 'Itinerary')
         .replace(/-[a-z0-9]{4}$/i, '')
         .replace(/-/g, ' ')
         .replace(/\b\w/g, c => c.toUpperCase());
+    },
+    get coverDisplayName() {
+      if (this.tripId) return this.tripDisplayName(this.tripId);
+      return this.travelerName || 'Your itinerary';
     },
     setDocumentTitle(name) {
       const clean = (name || '').trim() || 'Itinerary';

@@ -22,11 +22,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Caprasimo&family=EB+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="styles.css?v=17">
+  <link rel="stylesheet" href="styles.css?v=18">
 
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="app.js?v=20"></script>
+  <script src="app.js?v=21"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body x-data="itinerary()" x-cloak :class="{'ideas-mode': showIdeas}">
@@ -389,7 +389,7 @@
       <div>
         <h1 class="cover-title">Itinerary for</h1>
         <div class="cover-name-row">
-          <input type="text" x-model="travelerName" placeholder="Your name(s)" aria-label="Traveler name">
+          <div class="cover-name" x-text="coverDisplayName"></div>
         </div>
 
         <div class="cover-dates">

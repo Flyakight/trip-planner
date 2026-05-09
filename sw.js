@@ -1,4 +1,4 @@
-const VERSION = '2026-05-09-v1';
+const VERSION = '2026-05-09-v2';
 const STATIC_CACHE = `tab-static-${VERSION}`;
 const RUNTIME_CACHE = `tab-runtime-${VERSION}`;
 const TRIP_CACHE = `tab-trips-${VERSION}`;
@@ -6,8 +6,8 @@ const TRIP_CACHE = `tab-trips-${VERSION}`;
 const SHELL_URLS = [
   '/',
   '/index.html',
-  '/styles.css?v=17',
-  '/app.js?v=20',
+  '/styles.css?v=18',
+  '/app.js?v=21',
   '/manifest.webmanifest',
   '/favicon.png',
   '/assets/thereandback-logo.png',

@@ -548,18 +548,16 @@ a:hover { color: #2A4A2B; }
   margin: 0 0 0.5rem;
 }
 .cover-name-row { display: flex; align-items: baseline; gap: 0.75rem; margin-bottom: 1.25rem; }
-.cover-name-row input {
+.cover-name {
   flex: 1;
-  border: none;
   border-bottom: 1px solid var(--forest-faint);
-  background: transparent;
   font-family: var(--display);
   font-weight: 400;
   font-size: 2rem;
   padding: 0.15rem 0.25rem;
   color: var(--plum);
+  line-height: 1.15;
 }
-.cover-name-row input:focus { outline: none; border-bottom-color: var(--forest); }
 
 .cover-dates {
   border: 1px solid var(--forest-faint);
