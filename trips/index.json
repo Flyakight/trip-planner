@@ -7,10 +7,24 @@
     "timezone": "Europe/Tirane"
   },
   {
-    "slug": "cordaro-fraim-brown-montreal-2026-prlk",
-    "name": "Cordaro / Fraim / Brown — Montreal",
+    "slug": "cordaro-montreal-2026-prlk",
+    "name": "Cordaro — Montreal",
     "year": 2026,
-    "createdAt": "2026-04-26",
+    "createdAt": "2026-05-11",
+    "timezone": "America/Toronto"
+  },
+  {
+    "slug": "cordaro-fraim-montreal-2026-prlk",
+    "name": "Cordaro / Fraim — Montreal",
+    "year": 2026,
+    "createdAt": "2026-05-11",
+    "timezone": "America/Toronto"
+  },
+  {
+    "slug": "brown-montreal-2026-prlk",
+    "name": "Brown — Montreal",
+    "year": 2026,
+    "createdAt": "2026-05-11",
     "timezone": "America/Toronto"
   },
   {
