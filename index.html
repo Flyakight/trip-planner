@@ -544,11 +544,6 @@
                           x-text="e.ConfNo"
                           :title="'Copy ' + e.ConfNo"></button>
                   <span class="chip chip-cost" x-show="e.Cost" x-text="e.Cost"></span>
-                  <a class="chip chip-change no-print"
-                     x-show="canRequestDinnerChange(e)"
-                     :href="changeDinnerHref(e)"
-                     target="_blank"
-                     rel="noopener">Help me change this</a>
                   <button class="chip no-print" x-show="isAdmin && e._rowId" @click="openEditItemForm(e._rowId)">Edit</button>
                   <button class="chip chip-remove no-print" x-show="e._isLock" @click="removeLock(e._lockId)" title="Remove from this day">Remove</button>
                 </div>

@@ -902,33 +902,6 @@ function itinerary() {
     iconFor(category) {
       return CATEGORY_ICONS[this.catKey(category)] || CATEGORY_ICONS.activity;
     },
-    canRequestDinnerChange(row) {
-      if (!row || row._isLock) return false;
-      if ((row.Type || '').toLowerCase() !== 'fixed') return false;
-      if (this.catKey(row.Category) !== 'food') return false;
-      return /dinner|restaurant|reservation|beba|gibbys|milos|escondite|jacopo|renoir/i.test(`${row.Title || ''} ${row.Tags || ''}`);
-    },
-    changeDinnerHref(row) {
-      const trip = this.tripMeta?.name || this.tripDisplayName(this.tripId) || 'itinerary';
-      const when = [row?._iso ? this.formatDate(row._iso) : row?.Date, row?.TimeSlot ? this.formatTime(row.TimeSlot) : '']
-        .filter(Boolean)
-        .join(' at ');
-      const subject = `Change request: ${row?.Title || 'dinner reservation'}`;
-      const lines = [
-        `Hi Kate,`,
-        ``,
-        `Can you help us change this reservation?`,
-        ``,
-        `Trip: ${trip}`,
-        `Reservation: ${row?.Title || ''}`,
-        when ? `When: ${when}` : '',
-        row?.Location ? `Location: ${row.Location}` : '',
-        row?.ConfNo ? `Confirmation: ${row.ConfNo}` : '',
-        ``,
-        `What we want to change:`,
-      ].filter(line => line !== '');
-      return `mailto:kate@thereandback.club?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join('\n'))}`;
-    },
 
     /* ---------- Derived days ---------- */
     get days() {
