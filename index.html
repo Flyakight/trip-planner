@@ -186,7 +186,7 @@
       </div>
     </div>
 
-    <div class="item-form-panel no-print" x-show="isAdmin && itemFormOpen" x-transition>
+    <div class="item-form-panel no-print" x-ref="itemFormPanel" x-show="isAdmin && itemFormOpen" x-transition>
       <template x-if="itemFormDraft">
         <div>
           <div class="item-form-head">
@@ -408,9 +408,9 @@
                   x-text="offlineSaving ? 'Saving…' : (offlineSavedAt ? 'Refresh offline' : 'Save offline')"></button>
         </section>
 
-        <div class="cover-section-title">Trip Overview &amp; Reservation Nos.</div>
+        <div class="cover-section-title" x-show="!isAdmin">Trip Overview &amp; Reservation Nos.</div>
 
-        <div class="reservation-grid">
+        <div class="reservation-grid" x-show="!isAdmin">
           <template x-for="r in reservations" :key="r._iso + r.Title + r.ConfNo">
             <div class="res-card">
               <div class="res-title" x-text="r.Title"></div>

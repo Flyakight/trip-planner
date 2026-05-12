@@ -538,6 +538,9 @@ function itinerary() {
       this.itemFormIndex = idx;
       this.itemFormDraft = draft;
       this.itemFormOpen = true;
+      this.$nextTick(() => {
+        this.$refs.itemFormPanel?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     },
     closeItemForm() {
       this.itemFormOpen = false;
