@@ -1033,6 +1033,25 @@ a:hover { color: #2A4A2B; }
   border-color: #B89BA0;
   color: #5A3A40;
 }
+.chip-card-secured {
+  background: #EAF1F5;
+  border-color: #8FAFC0;
+  color: #2F5364;
+  cursor: default;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.chip-card-secured::before {
+  content: "*";
+  font-family: var(--sans);
+  font-weight: 800;
+  line-height: 1;
+}
+.chip-card-secured:hover {
+  background: #EAF1F5;
+  border-color: #8FAFC0;
+  color: #2F5364;
+}
 
 /* Bank / Suggested activities — visually distinct cream section */
 .bank-section {

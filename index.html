@@ -430,6 +430,7 @@
                       :class="'chip-paid-' + paidKey(r.PaidStatus)"
                       x-show="r.PaidStatus"
                       x-text="r.PaidStatus"></span>
+                <span class="chip chip-card-secured" x-show="isCardSecured(r)">Card secured</span>
                 <a class="chip" x-show="r.TicketLink" :href="r.TicketLink" target="_blank" rel="noopener">View booking</a>
                 <button class="chip no-print" x-show="isAdmin" @click="openEditItemForm(r._rowId)">Edit</button>
               </div>
@@ -544,6 +545,7 @@
                           x-text="e.ConfNo"
                           :title="'Copy ' + e.ConfNo"></button>
                   <span class="chip chip-cost" x-show="e.Cost" x-text="e.Cost"></span>
+                  <span class="chip chip-card-secured" x-show="isCardSecured(e)">Card secured</span>
                   <button class="chip no-print" x-show="isAdmin && e._rowId" @click="openEditItemForm(e._rowId)">Edit</button>
                   <button class="chip chip-remove no-print" x-show="e._isLock" @click="removeLock(e._lockId)" title="Remove from this day">Remove</button>
                 </div>

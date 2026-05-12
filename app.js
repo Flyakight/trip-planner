@@ -483,6 +483,14 @@ function itinerary() {
       const found = PAID_STATUSES.find(p => p.value === (status || ''));
       return found ? found.key : '';
     },
+    isCardSecured(row) {
+      const tags = row?._tags || this.parseTags(row?.Tags || '');
+      if (tags.some(t => ['cc-secured', 'card-secured', 'credit-card', 'cc'].includes(t.toLowerCase()))) return true;
+      const text = `${row?.Details || ''} ${row?.Tags || ''}`.toLowerCase();
+      return /secured?\s+(with|by)\s+a?\s*credit\s+card/.test(text)
+        || /credit\s+card\s+(secured|required|on\s+file)/.test(text)
+        || /cc[-\s]?secured/.test(text);
+    },
     itemTemplates() {
       return [
         { label: 'Hotel', category: 'Hotel', type: 'Fixed', tags: 'lodging' },
