@@ -1129,7 +1129,10 @@ function itinerary() {
       const bookedActivities = fixed
         .filter(r => {
           const cat = this.catKey(r.Category);
+          const tags = r._tags || this.parseTags(r.Tags || '');
+          const isSnackOnly = tags.some(t => ['arrival', 'snacks', 'late-night'].includes(t.toLowerCase()));
           if (cat === 'hotel' || cat === 'train' || cat === 'transit' || cat === 'driving') return false;
+          if (isSnackOnly && !r.ConfNo && !r.Cost) return false;
           return Boolean(r.ConfNo || r.Cost || r.TicketLink);
         })
         .map(r => ({
