@@ -884,6 +884,14 @@ function itinerary() {
       }
       return h * 60 + mm;
     },
+    eventSortPriority(row) {
+      const tags = row?._tags || this.parseTags(row?.Tags || '');
+      return tags.some(t => ['day-priority', 'f1', 'race-day', 'qualifying'].includes(t.toLowerCase())) ? -1 : 0;
+    },
+    eventSort(a, b) {
+      return this.eventSortPriority(a) - this.eventSortPriority(b)
+        || a._minutes - b._minutes;
+    },
     formatTime(t) {
       if (!t) return '';
       const mins = this.timeToMinutes(t);
@@ -942,7 +950,7 @@ function itinerary() {
 
         const fixed = items
           .filter(r => (r.Type || '').toLowerCase() === 'fixed')
-          .sort((a, b) => a._minutes - b._minutes);
+          .sort((a, b) => this.eventSort(a, b));
 
         // Locks assigned to this day
         const dayLocks = this.locks.filter(l => l.dayIso === iso);
@@ -961,7 +969,7 @@ function itinerary() {
         const timedLocks = locksAsEvents.filter(e => e._minutes !== 99999);
         const flexible = locksAsEvents.filter(e => e._minutes === 99999);
 
-        const timeline = [...fixed, ...timedLocks].sort((a, b) => a._minutes - b._minutes);
+        const timeline = [...fixed, ...timedLocks].sort((a, b) => this.eventSort(a, b));
 
         const allItems = [...items, ...locksAsEvents];
         const needsVeniceAlert = /venice|venezia/i.test(sleep)
